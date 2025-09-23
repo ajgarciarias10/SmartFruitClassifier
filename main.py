@@ -3,11 +3,13 @@ from tensorflow import keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Пути к папкам (оставить только apple, banana, avocado)
-train_dir = "/SmartFruitClassifier/dataset/train"
-test_dir = "/SmartFruitClassifier/dataset/test"
-valid_dir = "/SmartFruitClassifier/dataset/val"
+train_dir = "dataset/train/Fruit"
+test_dir = "dataset/test/Fruit" 
+valid_dir = "dataset/val/Fruit"
 
 # Генераторы с нормализацией
 train_datagen = ImageDataGenerator(rescale=1./255)
@@ -20,7 +22,7 @@ train_generator = train_datagen.flow_from_directory(
     target_size=(150, 150),
     batch_size=32,
     class_mode='categorical',
-    classes=['apple', 'banana', 'avocado']  # фиксируем классы
+    classes=['Apple', 'Avocado', 'Banana']  # фиксируем классы согласно папкам
 )
 
 valid_generator = valid_datagen.flow_from_directory(
@@ -28,7 +30,7 @@ valid_generator = valid_datagen.flow_from_directory(
     target_size=(150, 150),
     batch_size=32,
     class_mode='categorical',
-    classes=['apple', 'banana', 'avocado']
+    classes=['Apple', 'Avocado', 'Banana']
 )
 
 test_generator = test_datagen.flow_from_directory(
@@ -36,7 +38,7 @@ test_generator = test_datagen.flow_from_directory(
     target_size=(150, 150),
     batch_size=32,
     class_mode='categorical',
-    classes=['apple', 'banana', 'avocado']
+    classes=['Apple', 'Avocado', 'Banana']
 )
 
 # Строим CNN модель
@@ -104,13 +106,13 @@ print("Class indices:", train_generator.class_indices)
 # --- Пример предсказания на одном изображении ---
 from tensorflow.keras.preprocessing import image
 
-img_path = "/kaggle/input/some-image/apple.jpg"  # путь к тестовой картинке
+img_path = "dataset/test/Fruit/Apple/Golden-Delicious_001.jpg"  # путь к тестовой картинке
 img = image.load_img(img_path, target_size=(150, 150))
 img_array = image.img_to_array(img) / 255.0
 img_array = np.expand_dims(img_array, axis=0)
 
 prediction = model.predict(img_array)
 pred_class = np.argmax(prediction[0])
-class_labels = ['apple', 'banana', 'avocado']
+class_labels = ['Apple', 'Avocado', 'Banana']
 
 print("Prediction:", class_labels[pred_class], "| Probabilities:", prediction)
