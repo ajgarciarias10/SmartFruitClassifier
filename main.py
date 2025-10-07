@@ -22,7 +22,7 @@ train_generator = train_datagen.flow_from_directory(
     target_size=(150, 150),
     batch_size=32,
     class_mode='categorical',
-    classes=['Apple', 'Avocado', 'Banana']  # фиксируем классы согласно папкам
+    classes=['Apple', 'Cucumber', 'Banana']  # фиксируем классы согласно папкам
 )
 
 valid_generator = valid_datagen.flow_from_directory(
@@ -30,7 +30,7 @@ valid_generator = valid_datagen.flow_from_directory(
     target_size=(150, 150),
     batch_size=32,
     class_mode='categorical',
-    classes=['Apple', 'Avocado', 'Banana']
+    classes=['Apple', 'Cucumber', 'Banana']
 )
 
 test_generator = test_datagen.flow_from_directory(
@@ -38,7 +38,7 @@ test_generator = test_datagen.flow_from_directory(
     target_size=(150, 150),
     batch_size=32,
     class_mode='categorical',
-    classes=['Apple', 'Avocado', 'Banana']
+    classes=['Apple', 'Cucumber', 'Banana']
 )
 
 # Строим CNN модель
@@ -113,6 +113,6 @@ img_array = np.expand_dims(img_array, axis=0)
 
 prediction = model.predict(img_array)
 pred_class = np.argmax(prediction[0])
-class_labels = ['Apple', 'Avocado', 'Banana']
+class_labels = ['Apple', 'Cucumber', 'Banana']
 
 print("Prediction:", class_labels[pred_class], "| Probabilities:", prediction)
