@@ -1,4 +1,6 @@
-from FruitDetector import FruitDetector  # Fixed import
+from FruitDetector import FruitDetector
+from utils import validate_dataset_structure, print_dataset_summary, check_model_file
+import os
 
 # Configuration
 IMG_SIZE = 224
@@ -7,14 +9,24 @@ EPOCHS = 25
 NUM_CLASSES = 5  # apple, banana, cucumber, grapefruit, pomegranate
 LEARNING_RATE = 0.001
 
-# Dataset paths - adjust these to your directory structure
-TRAIN_DIR = 'dataset/train'
-VAL_DIR = 'dataset/val'
-TEST_DIR = 'dataset/test'
+# Dataset paths - using absolute paths for reliability
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TRAIN_DIR = os.path.join(BASE_DIR, 'dataset', 'train', 'Fruit')
+VAL_DIR = os.path.join(BASE_DIR, 'dataset', 'val', 'Fruit')
+TEST_DIR = os.path.join(BASE_DIR, 'dataset', 'test', 'Fruit')
 
 # Main execution
 if __name__ == "__main__":
     print("=== Fruit Detection Model ===\n")
+
+    # Check if directories exist
+    for dir_path, dir_name in [(TRAIN_DIR, "Training"), (VAL_DIR, "Validation"), (TEST_DIR, "Test")]:
+        if not os.path.exists(dir_path):
+            print(f"❌ Error: {dir_name} directory not found: {dir_path}")
+            print("Please make sure your dataset structure is correct.")
+            exit(1)
+        else:
+            print(f"✅ {dir_name} directory found: {dir_path}")
 
     # Initialize detector
     detector = FruitDetector(IMG_SIZE, NUM_CLASSES)
@@ -51,6 +63,15 @@ if __name__ == "__main__":
     detector.save_model('final_fruit_model.h5')
 
     print("\n=== Training Complete ===")
+    
+    # Show final dataset summary
+    print("\n📊 Final Dataset Summary:")
+    dataset_results = validate_dataset_structure('dataset')
+    print_dataset_summary(dataset_results)
+    
+    # Check saved model
+    model_info = check_model_file('final_fruit_model.h5')
+    print(f"\n💾 {model_info['message']}")
 
     # Example prediction (uncomment to use)
     # predicted_fruit, confidence, probs = detector.predict_image(

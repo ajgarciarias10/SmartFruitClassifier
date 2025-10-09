@@ -1,27 +1,42 @@
 import os
 import time
-import fiftyone as fo
-import fiftyone.zoo as foz
-from fiftyone import ViewField as F
+try:
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+    FIFTYONE_AVAILABLE = True
+except ImportError:
+    print("⚠️  FiftyOne not installed. Install with: pip install fiftyone")
+    FIFTYONE_AVAILABLE = False
+    F = None
+
+from utils import clean_view_fiftyone, validate_dataset_structure, print_dataset_summary
 
 
 def clean_view(ds, oi_name):
     """
-    Filtra para obtener imágenes que:
-    1. Contienen SOLO la clase objetivo
-    2. NO contienen ninguna otra clase (ni frutas ni otros objetos)
+    Wrapper for the common clean_view function
     """
-    labels = F("positive_labels.classifications").map(F("label"))
+    if not FIFTYONE_AVAILABLE:
+        raise ImportError("FiftyOne is required for this function")
+    
+    return clean_view_fiftyone(ds, oi_name, F)
 
-    # Condición 1: Debe contener exactamente UNA etiqueta
-    cond = labels.length() == 1
 
-    # Condición 2: Esa única etiqueta debe ser la clase objetivo
-    cond = cond & labels.contains(oi_name)
+def check_dataset_status():
+    """
+    Check current dataset status without downloading anything
+    """
+    print("Checking current dataset status...")
+    
+    dataset_dir = "dataset"
+    if not os.path.exists(dataset_dir):
+        print(f"❌ Dataset directory not found: {dataset_dir}")
+        return
+    
+    results = validate_dataset_structure(dataset_dir)
+    print_dataset_summary(results)
 
-    # En clean_view():
-    cond = labels.contains(oi_name)
-    # Permitir 1-2 etiquetas si una es la fruta
-    cond = cond & (labels.length() <= 2)
 
-    return ds.match(cond)
+if __name__ == "__main__":
+    check_dataset_status()

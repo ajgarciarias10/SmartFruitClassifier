@@ -1,15 +1,23 @@
 import os
 import time
-import fiftyone as fo
-import fiftyone.zoo as foz
-from fiftyone import ViewField as F
+try:
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+    FIFTYONE_AVAILABLE = True
+except ImportError:
+    print("⚠️  FiftyOne not installed. Install with: pip install fiftyone")
+    FIFTYONE_AVAILABLE = False
+    F = None
+
+from utils import clean_view_fiftyone
 
 # CONFIGURACIÓN DE LÍMITES
 MIN_IMAGES_PER_CLASS = 1000  # Mínimo de imágenes limpias por clase/split
 MAX_IMAGES_PER_CLASS = 2000  # Máximo de imágenes limpias por clase/split
 
 SPLITS = ["train", "validation", "test"]
-## hola
+
 TARGET_TO_OI = {
     "Apple": "Apple",
     "Cucumber": "Cucumber",
@@ -32,15 +40,12 @@ def split_dir_name(split):
 
 def clean_view(ds, oi_name):
     """
-    Filtra para obtener imágenes que contienen SOLO la clase objetivo
-    Sin ningún otro objeto en la imagen
+    Wrapper for the common clean_view function
     """
-    labels = F("positive_labels.classifications").map(F("label"))
-
-    # Exactamente UNA etiqueta y debe ser la fruta objetivo
-    cond = (labels.length() == 1) & labels.contains(oi_name)
-
-    return ds.match(cond)
+    if not FIFTYONE_AVAILABLE:
+        raise ImportError("FiftyOne is required for this function")
+    
+    return clean_view_fiftyone(ds, oi_name, F)
 
 
 def export_view(view, export_dir, target_name):
@@ -204,6 +209,11 @@ def download_one_class_for_split(target_name, oi_name, split, min_needed, max_ne
 
 
 def main():
+    if not FIFTYONE_AVAILABLE:
+        print("❌ Error: FiftyOne is not installed.")
+        print("Please install it with: pip install fiftyone")
+        return
+    
     print("\n" + "=" * 80)
     print("DESCARGA DE IMÁGENES LIMPIAS CON LÍMITES")
     print("=" * 80)

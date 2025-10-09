@@ -6,6 +6,7 @@ from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 from pathlib import Path
 class FruitDetector:
 
@@ -15,8 +16,14 @@ class FruitDetector:
         self.model = None
         self.history = None
 
-    def create_data_generators(self,TRAIN_DIR,BATCH_SIZE,VAL_DIR):
+    def create_data_generators(self, TRAIN_DIR, BATCH_SIZE, VAL_DIR):
         """Create data generators with augmentation for training"""
+        
+        # Validate directory paths
+        if not os.path.exists(TRAIN_DIR):
+            raise ValueError(f"Training directory not found: {TRAIN_DIR}")
+        if not os.path.exists(VAL_DIR):
+            raise ValueError(f"Validation directory not found: {VAL_DIR}")
 
         # Training data augmentation
         train_datagen = ImageDataGenerator(
@@ -211,6 +218,15 @@ class FruitDetector:
 
     def predict_image(self, image_path, class_names):
         """Predict a single image"""
+        
+        # Check if model exists
+        if self.model is None:
+            raise ValueError("Model not built or loaded. Please train or load a model first.")
+        
+        # Check if image file exists
+        if not os.path.exists(image_path):
+            raise ValueError(f"Image file not found: {image_path}")
+            
         img = keras.preprocessing.image.load_img(
             image_path,
             target_size=(self.img_size, self.img_size)
