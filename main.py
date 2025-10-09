@@ -1,118 +1,60 @@
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
-import matplotlib.pyplot as plt
-import numpy as np
+from FruitDetector import FruitDetector  # Fixed import
 
-# Пути к папкам (оставить только apple, banana, avocado)
-train_dir = "dataset/train/Fruit"
-test_dir = "dataset/test/Fruit" 
-valid_dir = "dataset/val/Fruit"
+# Configuration
+IMG_SIZE = 224
+BATCH_SIZE = 32
+EPOCHS = 25
+NUM_CLASSES = 5  # apple, banana, cucumber, grapefruit, pomegranate
+LEARNING_RATE = 0.001
 
-# Генераторы с нормализацией
-train_datagen = ImageDataGenerator(rescale=1./255)
-test_datagen = ImageDataGenerator(rescale=1./255)
-valid_datagen = ImageDataGenerator(rescale=1./255)
+# Dataset paths - adjust these to your directory structure
+TRAIN_DIR = 'dataset/train'
+VAL_DIR = 'dataset/val'
+TEST_DIR = 'dataset/test'
 
-# Генераторы из папок
-train_generator = train_datagen.flow_from_directory(
-    train_dir,
-    target_size=(150, 150),
-    batch_size=32,
-    class_mode='categorical',
-    classes=['Apple', 'Cucumber', 'Banana']  # фиксируем классы согласно папкам
-)
+# Main execution
+if __name__ == "__main__":
+    print("=== Fruit Detection Model ===\n")
 
-valid_generator = valid_datagen.flow_from_directory(
-    valid_dir,
-    target_size=(150, 150),
-    batch_size=32,
-    class_mode='categorical',
-    classes=['Apple', 'Cucumber', 'Banana']
-)
+    # Initialize detector
+    detector = FruitDetector(IMG_SIZE, NUM_CLASSES)
 
-test_generator = test_datagen.flow_from_directory(
-    test_dir,
-    target_size=(150, 150),
-    batch_size=32,
-    class_mode='categorical',
-    classes=['Apple', 'Cucumber', 'Banana']
-)
+    # Create data generators
+    print("Loading data...")
+    train_gen, val_gen = detector.create_data_generators(TRAIN_DIR, BATCH_SIZE, VAL_DIR)
 
-# Строим CNN модель
-model = Sequential()
+    # Print class names
+    class_names = list(train_gen.class_indices.keys())
+    print(f"\nClasses: {class_names}")
+    print(f"Number of training samples: {train_gen.samples}")
+    print(f"Number of validation samples: {val_gen.samples}")
 
-model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(150, 150, 3)))
-model.add(MaxPooling2D((2, 2)))
+    # Debug: check shapes of data and labels
+    x_batch, y_batch = next(train_gen)
+    print(f"Train batch shape: {x_batch.shape}, Labels shape: {y_batch.shape}")
+    x_val_batch, y_val_batch = next(val_gen)
+    print(f"Val batch shape: {x_val_batch.shape}, Labels shape: {y_val_batch.shape}")
 
-model.add(Conv2D(64, (3, 3), activation='relu'))
-model.add(MaxPooling2D((2, 2)))
+    # Build model
+    print("\nBuilding model...")
+    model = detector.build_model(LEARNING_RATE, use_transfer_learning=True)  # Added LEARNING_RATE parameter
+    model.summary()
 
-model.add(Conv2D(128, (3, 3), activation='relu'))
-model.add(MaxPooling2D((2, 2)))
+    # Train model
+    print("\nStarting training...")
+    history = detector.train(train_gen, val_gen, epochs=EPOCHS)
 
-model.add(Conv2D(128, (3, 3), activation='relu'))
-model.add(MaxPooling2D((2, 2)))
+    # Plot results
+    detector.plot_training_history()
 
-model.add(Flatten())
-model.add(Dense(512, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(3, activation='softmax'))  # 3 класса
+    # Save model
+    detector.save_model('final_fruit_model.h5')
 
-# Компиляция
-model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    print("\n=== Training Complete ===")
 
-# Обучение
-history = model.fit(
-    train_generator,
-    steps_per_epoch=50,
-    epochs=10,
-    validation_data=valid_generator,
-    validation_steps=50
-)
-
-# Оценка на тестовых данных
-score = model.evaluate(test_generator, steps=50)
-print("Test loss:", score[0])
-print("Test accuracy:", score[1])
-
-# Графики обучения
-acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-epochs = range(len(acc))
-
-plt.plot(epochs, acc, 'b', label='Training accuracy')
-plt.plot(epochs, val_acc, 'r', label='Validation accuracy')
-plt.title('Training and validation accuracy')
-plt.legend()
-
-plt.figure()
-plt.plot(epochs, loss, 'b', label='Training loss')
-plt.plot(epochs, val_loss, 'r', label='Validation loss')
-plt.title('Training and validation loss')
-plt.legend()
-plt.show()
-
-# Сохраняем модель
-model.save('fruit_classifier_apple_banana_avocado.h5')
-
-# Проверим индексы классов
-print("Class indices:", train_generator.class_indices)
-
-# --- Пример предсказания на одном изображении ---
-from tensorflow.keras.preprocessing import image
-
-img_path = "dataset/test/Fruit/Apple/Golden-Delicious_001.jpg"  # путь к тестовой картинке
-img = image.load_img(img_path, target_size=(150, 150))
-img_array = image.img_to_array(img) / 255.0
-img_array = np.expand_dims(img_array, axis=0)
-
-prediction = model.predict(img_array)
-pred_class = np.argmax(prediction[0])
-class_labels = ['Apple', 'Cucumber', 'Banana']
-
-print("Prediction:", class_labels[pred_class], "| Probabilities:", prediction)
+    # Example prediction (uncomment to use)
+    # predicted_fruit, confidence, probs = detector.predict_image(
+    #     'test_image.jpg',
+    #     class_names
+    # )
+    # print(f"\nPredicted: {predicted_fruit} (Confidence: {confidence:.2f}%)")
