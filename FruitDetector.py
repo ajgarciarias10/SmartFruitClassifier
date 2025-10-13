@@ -18,12 +18,7 @@ class FruitDetector:
 
     def create_data_generators(self, TRAIN_DIR, BATCH_SIZE, VAL_DIR):
         """Create data generators with augmentation for training"""
-        
-        # Validate directory paths
-        if not os.path.exists(TRAIN_DIR):
-            raise ValueError(f"Training directory not found: {TRAIN_DIR}")
-        if not os.path.exists(VAL_DIR):
-            raise ValueError(f"Validation directory not found: {VAL_DIR}")
+
 
         # Training data augmentation
         train_datagen = ImageDataGenerator(
@@ -60,33 +55,9 @@ class FruitDetector:
 
         return train_generator, val_generator
 
-    def build_model(self,LEARNING_RATE, use_transfer_learning=True):
-        """Build the CNN model using transfer learning or custom architecture"""
-
-        if use_transfer_learning:
-            # Load pre-trained MobileNetV2
-            base_model = MobileNetV2(
-                input_shape=(self.img_size, self.img_size, 3),
-                include_top=False,
-                weights='imagenet'
-            )
-
-            # Freeze base model layers
-            base_model.trainable = False
-
-            # Build model
-            model = keras.Sequential([
-                base_model,
-                layers.GlobalAveragePooling2D(),
-                layers.Dropout(0.5),
-                layers.Dense(128, activation='relu'),
-                layers.Dropout(0.3),
-                layers.Dense(self.num_classes, activation='softmax')
-            ])
-
-        else:
+    def build_model(self,LEARNING_RATE):
             # Custom CNN architecture
-            model = keras.Sequential([
+        model = keras.Sequential([
                 layers.Conv2D(32, (3, 3), activation='relu',
                               input_shape=(self.img_size, self.img_size, 3)),
                 layers.MaxPooling2D(2, 2),
@@ -104,8 +75,7 @@ class FruitDetector:
                 layers.Dropout(0.5),
                 layers.Dense(512, activation='relu'),
                 layers.Dropout(0.3),
-                layers.Dense(self.num_classes, activation='softmax')
-            ])
+                layers.Dense(self.num_classes, activation='softmax')])
 
         # Compile model
         model.compile(
@@ -215,7 +185,7 @@ class FruitDetector:
         print(f"Test Recall: {results[3]:.4f}")
 
         return results
-
+    ##TODO REVISAR REVISE
     def predict_image(self, image_path, class_names):
         """Predict a single image"""
         
