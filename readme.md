@@ -16,10 +16,27 @@ Kyrilo and Antonio have developed a machine learning system for fruit classifica
 
 ### 🛠️ Quick Setup
 
-1. **Check dependencies**: `python check_dependencies.py`
-2. **Install requirements**: `pip install tensorflow numpy matplotlib pillow`
-3. **Check dataset**: `python checkHowManyFruits.py`
-4. **Train model**: `python main.py`
+1. **Crear entorno virtual**: 
+   ```bash
+   python -m venv fruit_classifier_env
+   source fruit_classifier_env/bin/activate  # En Linux/Mac
+   .\fruit_classifier_env\Scripts\activate   # En Windows
+   ```
+
+2. **Instalar dependencias**: 
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Entrenar modelo**: 
+   ```bash
+   python main.py
+   ```
+
+4. **Probar modelo**: 
+   ```bash
+   python test_model.py
+   ```
 
 ### Datasets : From Kaggle and OpenImagesV7
 
@@ -34,21 +51,21 @@ The images are listed as having a CC BY 2.0 license.
 Short description of dataset and use case(s): bigger than ImageNet with 61M image level labels, 16M bounding boxes, 3M visual relationships, 2.7M instance segmentation masks, 600k localized narratives (synchronized audio and text caption, with mouse trace), and 66M point labels.
 
 ## 📁 Project Structure
-#TODO correct this
 
 ```
 SmartFruitClassifier/
-├── 🤖 FruitDetector.py      # Main CNN model class
-├── 🎯 main.py               # Training script
-├── 🔍 check_dependencies.py # System requirements check
-├── 📊 checkHowManyFruits.py # Dataset status checker
-├── 📥 loadFiftyOne.py       # Data download script
-├── 🛠️ utils.py              # Common utilities
-├── 🏗️ dataset/              # Training data
-│   ├── train/Fruit/         # Training images
-│   ├── val/Fruit/           # Validation images
-│   └── test/Fruit/          # Test images
-└── 🧠 *.h5                  # Trained models
+├── 🤖 Utilities/           # Utilidades del proyecto
+│   └── FruitDetector.py   # Clase principal del clasificador CNN
+├── �️ dataset/            # Datos de entrenamiento
+│   ├── train/Fruit/       # Imágenes de entrenamiento
+│   ├── val/Fruit/         # Imágenes de validación
+│   └── test/Fruit/        # Imágenes de prueba
+├── � main.py             # Script principal de entrenamiento
+├── 🧪 test_model.py       # Script para probar el modelo
+├── 📝 requirements.txt    # Dependencias del proyecto
+├── ❗ TROUBLESHOOTING.md  # Guía de resolución de problemas
+├── 🧠 best_fruit_model.h5 # Mejor modelo guardado
+└── 📊 training_history.png # Gráficas de entrenamiento
 ```
 
 ## 🚀 Usage
@@ -59,13 +76,14 @@ SmartFruitClassifier/
 4. **Train model**: Run `python main.py`
 
 ## ✨ Features
-## TODO CORRECT THIS
-- **CNN Learning** with MobileNetV2
-- **Data Augmentation** for better generalization
-- **Early Stopping** to prevent overfitting
-- **Automatic model checkpointing**
-- **Comprehensive training metrics** (accuracy, precision, recall)
-- **Visualization** of training progress
+
+- **CNN Personalizada**: Arquitectura de red neuronal convolucional diseñada específicamente para clasificación de frutas
+- **Aumento de Datos**: Rotación, zoom, y otras transformaciones para mejorar la generalización
+- **Early Stopping**: Prevención de sobreajuste monitorizando la pérdida de validación
+- **Guardado Automático**: Almacenamiento del mejor modelo durante el entrenamiento
+- **Métricas Completas**: Seguimiento de accuracy, precision y recall
+- **Visualización**: Gráficas detalladas del progreso del entrenamiento
+- **Predicción Simple**: Interfaz fácil de usar para clasificar nuevas imágenes
 
 ## 🔧 Recent Improvements
 
