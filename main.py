@@ -48,13 +48,13 @@ detector.plot_training_history()
 print("\n=== Training Complete ===")
 
 # Show final dataset summary
-print("\n📊 Final Dataset Summary:")
+print("\n Final Dataset Summary:")
 dataset_results = validate_dataset_structure('dataset')
 print_dataset_summary(dataset_results)
 
 # Check saved model
 model_info = check_model_file('final_fruit_model.h5')
-print(f"\n💾 {model_info['message']}")
+print(f"\n {model_info['message']}")
 
     # Example prediction (uncomment to use)
     # predicted_fruit, confidence, probs = detector.predict_image(

@@ -56,8 +56,10 @@ class FruitDetector:
 
     def build_model(self,LEARNING_RATE):
             # Custom CNN architecture
+        
         model = keras.Sequential([
-                layers.Conv2D(32, (3, 3), activation='relu',
+                #Arguments (net size , filter size, activation function, input shape)
+                layers.Conv2D(32, (3, 3), activation='relu', #relu  because for images is a good option
                               input_shape=(self.img_size, self.img_size, 3)),
                 layers.MaxPooling2D(2, 2),
 
@@ -74,11 +76,11 @@ class FruitDetector:
                 layers.Dropout(0.5),
                 layers.Dense(512, activation='relu'),
                 layers.Dropout(0.3),
-                layers.Dense(self.num_classes, activation='softmax')])
+                layers.Dense(self.num_classes, activation='softmax')]) #The output is a probability distribution vector when each element is the probability of each class
 
         # Compile model
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+            optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE),#Adam is a good optimizer for most cases
             loss='categorical_crossentropy',
             metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()]
         )
@@ -88,6 +90,7 @@ class FruitDetector:
 
     def setup_callbacks(self):
         """Setup training callbacks"""
+        #Early stopping to prevent overfitting
         callbacks = [
             EarlyStopping(
                 monitor='val_loss',
@@ -95,19 +98,13 @@ class FruitDetector:
                 restore_best_weights=True,
                 verbose=1
             ),
+            #Save the best model during training 
             ModelCheckpoint(
                 'best_fruit_model.h5',
                 monitor='val_accuracy',
                 save_best_only=True,
                 verbose=1
             ),
-            ReduceLROnPlateau(
-                monitor='val_loss',
-                factor=0.5,
-                patience=5,
-                min_lr=1e-7,
-                verbose=1
-            )
         ]
         return callbacks
 
@@ -184,30 +181,26 @@ class FruitDetector:
         print(f"Test Recall: {results[3]:.4f}")
 
         return results
-    ##TODO REVISAR REVISE
     def predict_image(self, image_path, class_names):
-        """Predict a single image"""
-        
-        # Check if model exists
-        if self.model is None:
-            raise ValueError("Model not built or loaded. Please train or load a model first.")
-        
-        # Check if image file exists
-        if not os.path.exists(image_path):
-            raise ValueError(f"Image file not found: {image_path}")
-            
+        """Predict a single image and return class name and confidence"""
+        # Load and preprocess image
         img = keras.preprocessing.image.load_img(
             image_path,
             target_size=(self.img_size, self.img_size)
         )
         img_array = keras.preprocessing.image.img_to_array(img)
+        #This does expand the dimensions of the image to match the input shape of the model and normalizes 
+        # the pixel values to be between 0 and 1
         img_array = np.expand_dims(img_array, axis=0) / 255.0
 
+        # Get predictions
         predictions = self.model.predict(img_array)
-        predicted_class = class_names[np.argmax(predictions[0])]
-        confidence = np.max(predictions[0]) * 100
+        #Convert the predictions to class name and confidence
+        idx = np.argmax(predictions[0])
+        predicted_class = class_names[idx]
+        confidence = predictions[0][idx] * 100
 
-        return predicted_class, confidence, predictions[0]
+        return predicted_class, confidence
 
     def save_model(self, filepath='fruit_detector_model.h5'):
         """Save the trained model"""
