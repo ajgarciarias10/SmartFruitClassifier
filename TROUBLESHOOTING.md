@@ -91,7 +91,8 @@ print("Доступные GPU:", tf.config.list_physical_devices('GPU'))
 ### Проверка загруженной модели:
 
 ```python
-from FruitDetector import FruitDetector
+from Utilities.FruitDetector import FruitDetector
+
 detector = FruitDetector(224, 5)
 detector.load_model('fruit_classifier_apple_banana_avocado.h5')
 ```

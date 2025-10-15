@@ -1,6 +1,6 @@
-from FruitDetector import FruitDetector
-from utils import validate_dataset_structure, print_dataset_summary, check_model_file
-import os
+from Utilities.FruitDetector import FruitDetector
+from Utilities.DatasetManagement.utils import validate_dataset_structure, print_dataset_summary, check_model_file
+import os #Used to manage file paths
 
 # Configuration
 IMG_SIZE = 224
@@ -9,14 +9,14 @@ EPOCHS = 25
 NUM_CLASSES = 5  # apple, banana, cucumber, grapefruit, pomegranate
 LEARNING_RATE = 0.001
 
-# Dataset paths - using absolute paths for reliability
+# Dataset paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TRAIN_DIR = os.path.join(BASE_DIR, 'dataset', 'train', 'Fruit')
 VAL_DIR = os.path.join(BASE_DIR, 'dataset', 'val', 'Fruit')
 TEST_DIR = os.path.join(BASE_DIR, 'dataset', 'test', 'Fruit')
 
 # Main execution
-print("=== Fruit Detection Model ===\n")
+print("Fruit Classification  Model \n")
 
 # Initialize detector
 detector = FruitDetector(IMG_SIZE, NUM_CLASSES)

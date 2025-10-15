@@ -34,10 +34,11 @@ The images are listed as having a CC BY 2.0 license.
 Short description of dataset and use case(s): bigger than ImageNet with 61M image level labels, 16M bounding boxes, 3M visual relationships, 2.7M instance segmentation masks, 600k localized narratives (synchronized audio and text caption, with mouse trace), and 66M point labels.
 
 ## 📁 Project Structure
+#TODO correct this
 
 ```
 SmartFruitClassifier/
-├── 🤖 FruitDetector.py      # Main ML model class
+├── 🤖 FruitDetector.py      # Main CNN model class
 ├── 🎯 main.py               # Training script
 ├── 🔍 check_dependencies.py # System requirements check
 ├── 📊 checkHowManyFruits.py # Dataset status checker
@@ -58,8 +59,8 @@ SmartFruitClassifier/
 4. **Train model**: Run `python main.py`
 
 ## ✨ Features
-
-- **Transfer Learning** with MobileNetV2
+## TODO CORRECT THIS
+- **CNN Learning** with MobileNetV2
 - **Data Augmentation** for better generalization
 - **Early Stopping** to prevent overfitting
 - **Automatic model checkpointing**
@@ -81,4 +82,4 @@ SmartFruitClassifier/
 
 ##### Data Download Script
 
-- [loadFiftyOne.py](loadFiftyOne.py) - Downloads images from OpenImages V7
+- [loadFiftyOne.py](Utilities/DatasetManagement/loadFiftyOne.py) - Downloads images from OpenImages V7

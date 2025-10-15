@@ -17,10 +17,9 @@ class FruitDetector:
         self.history = None
 
     def create_data_generators(self, TRAIN_DIR, BATCH_SIZE, VAL_DIR):
-        """Create data generators with augmentation for training"""
-
-
+    
         # Training data augmentation
+        #This part is used to make differences between images of the same class
         train_datagen = ImageDataGenerator(
             rescale=1. / 255,
             rotation_range=40,

@@ -29,7 +29,7 @@ def check_dataset_status():
     """
     print("Checking current dataset status...")
     
-    dataset_dir = "dataset"
+    dataset_dir = "../../dataset"
     if not os.path.exists(dataset_dir):
         print(f"❌ Dataset directory not found: {dataset_dir}")
         return
