@@ -1,120 +1,143 @@
+import math
 import os
 import time
+
 try:
     import fiftyone as fo
     import fiftyone.zoo as foz
     from fiftyone import ViewField as F
+
     FIFTYONE_AVAILABLE = True
 except ImportError:
-    print("⚠️  FiftyOne not installed. Install with: pip install fiftyone")
+    print("Warning: FiftyOne not installed. Install with: pip install fiftyone")
     FIFTYONE_AVAILABLE = False
     F = None
 
 from utils import clean_view_fiftyone
 
-# CONFIGURACIÓN DE LÍMITES
-MIN_IMAGES_PER_CLASS = 1000  # Mínimo de imágenes limpias por clase/split
-MAX_IMAGES_PER_CLASS = 2000  # Máximo de imágenes limpias por clase/split
-
+# Dataset configuration ----------------------------------------------------- #
 SPLITS = ["train", "validation", "test"]
+SPLIT_NAME_MAP = {"train": "train", "validation": "val", "test": "test"}
 
 TARGET_TO_OI = {
     "Apple": "Apple",
     "Cucumber": "Cucumber",
-    "Banana": "Banana",
     "Pomegranate": "Pomegranate",
-    "GrapeFruit": "Grapefruit",
+    "Grapefruit": "Grapefruit",
 }
 
+MIN_TOTAL_IMAGES = 10000
+IMAGES_PER_CLASS_PER_SPLIT = math.ceil(
+    MIN_TOTAL_IMAGES / (len(TARGET_TO_OI) * len(SPLITS))
+)
+TOTAL_REQUESTED_IMAGES = (
+    IMAGES_PER_CLASS_PER_SPLIT * len(TARGET_TO_OI) * len(SPLITS)
+)
+
 OUT_ROOT = "dataset"
+BATCH_MULTIPLIERS = [3, 5, 8, 12, 20, 30]
+MAX_SAMPLES_PER_ATTEMPT = 50000
+DOWNLOAD_COOLDOWN_SECONDS = 1
+ERROR_COOLDOWN_SECONDS = 2
 
-
-def ensure_dir(p):
-    os.makedirs(p, exist_ok=True)
-    return p
+# Helpers ------------------------------------------------------------------- #
+def ensure_dir(path):
+    os.makedirs(path, exist_ok=True)
+    return path
 
 
 def split_dir_name(split):
-    return {"train": "train", "validation": "val", "test": "test"}[split]
+    return SPLIT_NAME_MAP[split]
+
+
+def count_existing_images(path):
+    if not os.path.exists(path):
+        return 0
+    return sum(
+        1 for fname in os.listdir(path) if os.path.isfile(os.path.join(path, fname))
+    )
 
 
 def clean_view(ds, oi_name):
     """
-    Wrapper for the common clean_view function
+    Wrapper for the common clean_view function.
     """
     if not FIFTYONE_AVAILABLE:
         raise ImportError("FiftyOne is required for this function")
-    
+
     return clean_view_fiftyone(ds, oi_name, F)
 
 
 def export_view(view, export_dir, target_name):
-    """Exporta las imágenes limpias al disco"""
+    """Exporta las imagenes filtradas al disco con etiquetas normalizadas."""
     ds_base = view._dataset
 
     if "ground_truth" not in ds_base.get_field_schema():
         ds_base.add_sample_field(
             "ground_truth",
             fo.EmbeddedDocumentField,
-            embedded_doc_type=fo.Classification
+            embedded_doc_type=fo.Classification,
         )
 
-    print("      📝 Asignando etiquetas...", end=" ", flush=True)
-    for s in view.iter_samples(progress=False):
-        s["ground_truth"] = fo.Classification(label=target_name)
-        s.save()
-    print("✓")
+    print("      -> Asignando etiquetas...", end=" ", flush=True)
+    for sample in view.iter_samples(progress=False):
+        sample["ground_truth"] = fo.Classification(label=target_name)
+        sample.save()
+    print("OK")
 
-    print("      💾 Exportando a disco...", end=" ", flush=True)
+    print("      -> Exportando a disco...", end=" ", flush=True)
     view.export(
         export_dir=export_dir,
         dataset_type=fo.types.ImageClassificationDirectoryTree,
         label_field="ground_truth",
     )
-    print("✓")
+    print("OK")
 
 
-def download_one_class_for_split(target_name, oi_name, split, min_needed, max_needed):
+def download_one_class_for_split(target_name, oi_name, split, target_count):
     """
-    Descarga imágenes limpias hasta conseguir entre min_needed y max_needed
-    Se detiene cuando alcanza max_needed o cuando no hay más imágenes disponibles
+    Descarga imagenes limpias hasta alcanzar el objetivo exacto por clase/split.
     """
     split_dir = ensure_dir(os.path.join(OUT_ROOT, split_dir_name(split), "Fruit"))
     target_dir = ensure_dir(os.path.join(split_dir, target_name))
 
-    # Cuenta cuántas ya existen
-    got = len([f for f in os.listdir(target_dir) if os.path.isfile(os.path.join(target_dir, f))])
+    current_count = count_existing_images(target_dir)
 
-    if got >= max_needed:
-        print(f"\n✅ [{split}] {target_name}: ya hay {got} imágenes (≥ máximo {max_needed}), omitiendo.")
+    if current_count == target_count:
+        print(
+            f"\nOK. [{split}] {target_name}: ya existen {current_count} imagenes "
+            f"(objetivo alcanzado)."
+        )
         return
 
-    if got >= min_needed:
-        print(f"\n✅ [{split}] {target_name}: ya hay {got} imágenes (≥ mínimo {min_needed}), omitiendo.")
+    if current_count > target_count:
+        print(
+            f"\nWarning. [{split}] {target_name}: existen {current_count} imagenes, "
+            f"por encima del objetivo de {target_count}. Se omite la descarga."
+        )
         return
 
-    print(f"\n{'=' * 75}")
-    print(f"[{split}] {oi_name} → {target_name}")
-    print(f"Rango objetivo: {min_needed}-{max_needed} | Ya descargadas: {got}")
-    print(f"{'=' * 75}")
+    print("\n" + "=" * 75)
+    print(f"[{split}] {oi_name} -> {target_name}")
+    print(
+        f"Objetivo: {target_count} imagenes limpias | Descargadas previamente: "
+        f"{current_count}"
+    )
+    print("=" * 75)
 
-    remaining = max_needed - got
-
-    # Estrategia de descargas progresivas
-    # Asumiendo que ~10-20% de las imágenes son limpias
-    batch_multipliers = [3, 5, 8, 12, 20, 30]
-
-    for attempt, multiplier in enumerate(batch_multipliers, 1):
-        if got >= max_needed:
-            print(f"\n🎉 ¡Máximo alcanzado! ({got}/{max_needed})")
+    for attempt, multiplier in enumerate(BATCH_MULTIPLIERS, start=1):
+        remaining = target_count - current_count
+        if remaining <= 0:
             break
 
-        max_samp = int((max_needed - got) * multiplier)
+        max_samples = min(
+            max(remaining * multiplier, remaining), MAX_SAMPLES_PER_ATTEMPT
+        )
 
-        # Limitar a un máximo razonable por intento (50k imágenes)
-        max_samp = min(max_samp, 50000)
-
-        print(f"\n📥 Intento {attempt}/{len(batch_multipliers)}: descargando hasta {max_samp} imágenes...")
+        print(
+            f"\n--> Intento {attempt}/{len(BATCH_MULTIPLIERS)}: "
+            f"solicitando hasta {max_samples} imagenes de Open Images V7..."
+        )
 
         try:
             ds = foz.load_zoo_dataset(
@@ -122,166 +145,172 @@ def download_one_class_for_split(target_name, oi_name, split, min_needed, max_ne
                 split=split,
                 label_types=["classifications"],
                 classes=[oi_name],
-                max_samples=max_samp,
-                only_matching=True,  # Solo imágenes que contienen esta clase
+                max_samples=max_samples,
+                only_matching=True,
                 shuffle=True,
-                seed=42 + attempt,  # Seed diferente por intento
+                seed=42 + attempt,
                 persistent=False,
             )
 
             total_downloaded = len(ds)
-            print(f"   📊 Descargadas: {total_downloaded} imágenes totales")
+            print(f"   -> Descargadas: {total_downloaded} imagenes totales")
 
             if total_downloaded == 0:
-                print(f"   ⚠️  No hay más imágenes disponibles en Open Images V7")
+                print("   !! No hay mas imagenes disponibles para esta clase/split.")
                 ds.delete()
                 break
 
-            # Filtra las limpias (solo la fruta, sin otros objetos)
             clean = clean_view(ds, oi_name)
-            len_clean = clean.count()
+            clean_count = clean.count()
+            percentage = (
+                (clean_count / total_downloaded) * 100 if total_downloaded > 0 else 0.0
+            )
+            print(
+                f"   -> Imagenes limpias: {clean_count} ({percentage:.1f}% del lote)"
+            )
 
-            percentage = (len_clean / total_downloaded * 100) if total_downloaded > 0 else 0
-            print(f"   ✅ Limpias encontradas: {len_clean} ({percentage:.1f}%)")
-
-            if len_clean == 0:
-                print(f"   ⚠️  No se encontraron imágenes limpias en este lote")
+            if clean_count == 0:
+                print("   !! Lote sin imagenes limpias, buscando otro...")
                 ds.delete()
-
-                # Si llevamos muchos intentos sin encontrar limpias, paramos
                 if attempt >= 3:
-                    print(f"   ⛔ No se encuentran más imágenes limpias después de {attempt} intentos")
+                    print(
+                        f"   !! No se encontraron imagenes limpias tras {attempt} intentos."
+                    )
                     break
+                time.sleep(DOWNLOAD_COOLDOWN_SECONDS)
                 continue
 
-            # Toma solo las necesarias (sin pasarse del máximo)
-            still_needed = max_needed - got
-            to_export = min(len_clean, still_needed)
+            to_export = min(clean_count, remaining)
+            if to_export == 0:
+                print("   -> No se necesitan mas imagenes para este objetivo.")
+                ds.delete()
+                break
 
-            if to_export < len_clean:
-                print(f"   ✂️  Tomando {to_export} de {len_clean} (para no exceder el máximo)")
+            if to_export < clean_count:
+                print(
+                    f"   -> Seleccionando {to_export} de {clean_count} para cumplir el objetivo."
+                )
                 clean = clean.take(to_export, seed=42)
 
-            # Exporta
-            print(f"   🔄 Exportando {to_export} imágenes...")
+            print(f"   -> Exportando {to_export} imagenes filtradas...")
             export_view(clean, split_dir, target_name)
-
-            # Limpia memoria
             ds.delete()
 
-            # Actualiza contador
-            got = len([f for f in os.listdir(target_dir) if os.path.isfile(os.path.join(target_dir, f))])
-            print(f"   📈 Total acumulado: {got}/{max_needed}")
+            current_count = count_existing_images(target_dir)
+            print(
+                f"   -> Progreso acumulado: {current_count}/{target_count} imagenes."
+            )
 
-            # Verifica si alcanzamos el objetivo
-            if got >= max_needed:
-                print(f"\n🎉 ¡Máximo alcanzado para {target_name} en {split}! ({got} imágenes)")
-                break
-            elif got >= min_needed:
-                print(f"\n✅ Mínimo alcanzado para {target_name} en {split}! ({got} imágenes)")
-                print(f"   Continuando para intentar alcanzar el máximo ({max_needed})...")
-
-            # Si descargamos menos del límite, significa que no hay más
-            if total_downloaded < max_samp:
-                print(f"\n   ℹ️  Se alcanzó el límite de imágenes disponibles en Open Images V7")
+            if current_count >= target_count:
+                print(
+                    f"\nOK. Objetivo alcanzado para {target_name} en {split}: "
+                    f"{current_count} imagenes limpias."
+                )
                 break
 
-            time.sleep(1)  # Pausa entre intentos
+            if total_downloaded < max_samples:
+                print(
+                    "\n!! Open Images devolvio menos imagenes de las solicitadas. "
+                    "Puede que no queden mas disponibles."
+                )
+                break
 
-        except Exception as e:
-            print(f"   ❌ Error en intento {attempt}: {str(e)}")
-            time.sleep(2)
+            time.sleep(DOWNLOAD_COOLDOWN_SECONDS)
+
+        except Exception as exc:
+            print(f"   !! Error en el intento {attempt}: {exc}")
+            time.sleep(ERROR_COOLDOWN_SECONDS)
             continue
 
-    # Resumen final
-    final_count = len([f for f in os.listdir(target_dir) if os.path.isfile(os.path.join(target_dir, f))])
-
-    print(f"\n{'─' * 75}")
-    if final_count >= max_needed:
-        print(f"✅ COMPLETADO: {final_count} imágenes (máximo alcanzado)")
-    elif final_count >= min_needed:
-        print(f"✅ ACEPTABLE: {final_count} imágenes (mínimo alcanzado)")
-        print(f"   No se pudieron obtener más imágenes limpias de Open Images V7")
+    final_count = count_existing_images(target_dir)
+    print("\n" + "-" * 75)
+    if final_count >= target_count:
+        print(
+            f"OK. Objetivo final cumplido: {final_count} imagenes "
+            f"para {target_name} en {split}."
+        )
     else:
-        print(f"⚠️  INSUFICIENTE: {final_count} imágenes (mínimo: {min_needed})")
-        print(f"   Faltan: {min_needed - final_count} imágenes")
-    print(f"{'─' * 75}")
+        missing = target_count - final_count
+        print(
+            f"!! Objetivo incompleto: {final_count}/{target_count} imagenes "
+            f"({missing} pendientes)."
+        )
+    print("-" * 75)
 
 
 def main():
     if not FIFTYONE_AVAILABLE:
-        print("❌ Error: FiftyOne is not installed.")
+        print("Error: FiftyOne is not installed.")
         print("Please install it with: pip install fiftyone")
         return
-    
+
     print("\n" + "=" * 80)
-    print("DESCARGA DE IMÁGENES LIMPIAS CON LÍMITES")
+    print("DESCARGA BALANCEADA DE IMAGENES LIMPIAS")
     print("=" * 80)
-    print(f"Clases: {list(TARGET_TO_OI.keys())}")
-    print(f"Objetivo por clase/split: {MIN_IMAGES_PER_CLASS}-{MAX_IMAGES_PER_CLASS} imágenes")
-    print(f"Filtro: SOLO la fruta objetivo, sin otros objetos")
+    print(f"Clases objetivo: {list(TARGET_TO_OI.keys())}")
+    print(f"Splits: {SPLITS}")
+    print(f"Minimo total requerido: {MIN_TOTAL_IMAGES} imagenes")
+    print(
+        f"Objetivo por clase/split: {IMAGES_PER_CLASS_PER_SPLIT} "
+        f"(total solicitado: {TOTAL_REQUESTED_IMAGES})"
+    )
+    print("Filtro aplicado: solo la fruta objetivo, sin objetos extra.")
     print("=" * 80 + "\n")
 
     total_start = time.time()
 
     for split in SPLITS:
-        print(f"\n{'#' * 80}")
+        print("\n" + "#" * 80)
         print(f"# SPLIT: {split.upper()}")
-        print(f"{'#' * 80}")
+        print("#" * 80)
 
         for target_name, oi_name in TARGET_TO_OI.items():
             download_one_class_for_split(
                 target_name=target_name,
                 oi_name=oi_name,
                 split=split,
-                min_needed=MIN_IMAGES_PER_CLASS,
-                max_needed=MAX_IMAGES_PER_CLASS,
+                target_count=IMAGES_PER_CLASS_PER_SPLIT,
             )
 
-    total_time = time.time() - total_start
+    total_time_minutes = (time.time() - total_start) / 60
 
     print("\n" + "=" * 80)
-    print("✅ PROCESO COMPLETADO")
+    print("PROCESO COMPLETADO")
     print("=" * 80)
-    print(f"Tiempo total: {total_time / 60:.1f} minutos")
-    print(f"Directorio: {os.path.abspath(OUT_ROOT)}")
+    print(f"Tiempo total: {total_time_minutes:.1f} minutos")
+    print(f"Directorio de salida: {os.path.abspath(OUT_ROOT)}")
 
-    # Resumen final detallado
     print("\n" + "=" * 80)
-    print("RESUMEN FINAL DE DESCARGA:")
+    print("RESUMEN FINAL")
     print("=" * 80)
 
     for split in SPLITS:
-        split_name = split_dir_name(split)
-        split_path = os.path.join(OUT_ROOT, split_name, "Fruit")
+        split_path = os.path.join(OUT_ROOT, split_dir_name(split), "Fruit")
+        if not os.path.exists(split_path):
+            print(f"\n{split.upper()}: sin datos.")
+            continue
 
-        if os.path.exists(split_path):
-            print(f"\n{split.upper()}:")
-            print(f"{'Clase':<15} {'Descargadas':>12} {'Estado':>15}")
-            print("─" * 50)
+        print(f"\n{split.upper()}:")
+        print(f"{'Clase':<15} {'Descargadas':>12} {'Estado':>12}")
+        print("-" * 45)
 
-            for target_name in TARGET_TO_OI.keys():
-                target_path = os.path.join(split_path, target_name)
-                if os.path.exists(target_path):
-                    count = len([f for f in os.listdir(target_path)
-                                 if os.path.isfile(os.path.join(target_path, f))])
+        for target_name in TARGET_TO_OI.keys():
+            class_path = os.path.join(split_path, target_name)
+            count = count_existing_images(class_path)
 
-                    if count >= MAX_IMAGES_PER_CLASS:
-                        status = "✅ Máximo"
-                    elif count >= MIN_IMAGES_PER_CLASS:
-                        status = "✅ Mínimo OK"
-                    else:
-                        status = "⚠️ Insuficiente"
+            if count == IMAGES_PER_CLASS_PER_SPLIT:
+                status = "OK"
+            elif count > IMAGES_PER_CLASS_PER_SPLIT:
+                status = "Sobre"
+            elif count == 0:
+                status = "Vacio"
+            else:
+                status = "Faltan"
 
-                    print(f"{target_name:<15} {count:>12} {status:>15}")
-                else:
-                    print(f"{target_name:<15} {0:>12} {'❌ Sin datos':>15}")
+            print(f"{target_name:<15} {count:>12} {status:>12}")
 
-    print("\n" + "=" * 80)
-    print("LEYENDA:")
-    print("  ✅ Máximo      = Se alcanzó el límite máximo (2000 imágenes)")
-    print("  ✅ Mínimo OK   = Se alcanzó el mínimo requerido (1000 imágenes)")
-    print("  ⚠️ Insuficiente = No se alcanzó el mínimo (< 1000 imágenes)")
+    print("\nObjetivo por clase/split:", IMAGES_PER_CLASS_PER_SPLIT)
+    print("Imagenes totales solicitadas:", TOTAL_REQUESTED_IMAGES)
     print("=" * 80 + "\n")
 
 
