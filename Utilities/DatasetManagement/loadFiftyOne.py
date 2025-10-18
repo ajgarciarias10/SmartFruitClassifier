@@ -13,7 +13,12 @@ except ImportError:
     FIFTYONE_AVAILABLE = False
     F = None
 
-from utils import clean_view_fiftyone
+try:
+    # Running as module within package
+    from .utils import clean_view_fiftyone  # type: ignore
+except ImportError:
+    # Running as standalone script
+    from utils import clean_view_fiftyone
 
 # Dataset configuration ----------------------------------------------------- #
 SPLITS = ["train", "validation", "test"]
@@ -39,6 +44,7 @@ BATCH_MULTIPLIERS = [3, 5, 8, 12, 20, 30]
 MAX_SAMPLES_PER_ATTEMPT = 50000
 DOWNLOAD_COOLDOWN_SECONDS = 1
 ERROR_COOLDOWN_SECONDS = 2
+DATASET_SOURCES = ["open-images-v7", "open-images-v6"]
 
 # Helpers ------------------------------------------------------------------- #
 def ensure_dir(path):
@@ -125,32 +131,47 @@ def download_one_class_for_split(target_name, oi_name, split, target_count):
     )
     print("=" * 75)
 
-    for attempt, multiplier in enumerate(BATCH_MULTIPLIERS, start=1):
+    for source_index, dataset_name in enumerate(DATASET_SOURCES, start=1):
         remaining = target_count - current_count
         if remaining <= 0:
             break
 
-        max_samples = min(
-            max(remaining * multiplier, remaining), MAX_SAMPLES_PER_ATTEMPT
-        )
-
         print(
-            f"\n--> Intento {attempt}/{len(BATCH_MULTIPLIERS)}: "
-            f"solicitando hasta {max_samples} imagenes de Open Images V7..."
+            f"\nFuente {source_index}/{len(DATASET_SOURCES)}: {dataset_name}"
         )
 
-        try:
-            ds = foz.load_zoo_dataset(
-                "open-images-v7",
-                split=split,
-                label_types=["classifications"],
-                classes=[oi_name],
-                max_samples=max_samples,
-                only_matching=True,
-                shuffle=True,
-                seed=42 + attempt,
-                persistent=False,
+        for attempt, multiplier in enumerate(BATCH_MULTIPLIERS, start=1):
+            remaining = target_count - current_count
+            if remaining <= 0:
+                break
+
+            max_samples = min(
+                max(remaining * multiplier, remaining), MAX_SAMPLES_PER_ATTEMPT
             )
+
+            print(
+                f"\n--> Intento {attempt}/{len(BATCH_MULTIPLIERS)} "
+                f"desde {dataset_name}: solicitando hasta {max_samples} imagenes..."
+            )
+
+            try:
+                ds = foz.load_zoo_dataset(
+                    dataset_name,
+                    split=split,
+                    label_types=["classifications"],
+                    classes=[oi_name],
+                    max_samples=max_samples,
+                    only_matching=True,
+                    shuffle=True,
+                    seed=42 + attempt + (source_index * 100),
+                    persistent=False,
+                )
+            except Exception as exc:
+                print(
+                    f"   !! No se pudo cargar {dataset_name} para {split}: {exc}"
+                )
+                time.sleep(ERROR_COOLDOWN_SECONDS)
+                break
 
             total_downloaded = len(ds)
             print(f"   -> Descargadas: {total_downloaded} imagenes totales")
@@ -210,17 +231,15 @@ def download_one_class_for_split(target_name, oi_name, split, target_count):
 
             if total_downloaded < max_samples:
                 print(
-                    "\n!! Open Images devolvio menos imagenes de las solicitadas. "
+                    "\n!! La fuente devolvio menos imagenes de las solicitadas. "
                     "Puede que no queden mas disponibles."
                 )
                 break
 
             time.sleep(DOWNLOAD_COOLDOWN_SECONDS)
 
-        except Exception as exc:
-            print(f"   !! Error en el intento {attempt}: {exc}")
-            time.sleep(ERROR_COOLDOWN_SECONDS)
-            continue
+        if current_count >= target_count:
+            break
 
     final_count = count_existing_images(target_dir)
     print("\n" + "-" * 75)

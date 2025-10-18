@@ -1,4 +1,4 @@
-from Utilities.FruitDetector import FruitDetector
+from Run.FruitDetector import FruitDetector
 from Utilities.DatasetManagement.utils import validate_dataset_structure, print_dataset_summary, check_model_file
 import os #Used to manage file paths
 

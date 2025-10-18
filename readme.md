@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Kyrilo and Antonio have developed a machine learning system for fruit classification using deep learning. The system can identify:
+Antonio and  Kyrylo have developed a machine learning system for fruit classification using deep learning. The system can identify:
 
 - 🍎 Apples
 - 🍌 Bananas
@@ -16,28 +16,44 @@ Kyrilo and Antonio have developed a machine learning system for fruit classifica
 
 ### 🛠️ Quick Setup
 
-1. **Crear entorno virtual**: 
-   ```bash
+1. **Create virtual enviroment**: 
+   ```
    python -m venv fruit_classifier_env
    source fruit_classifier_env/bin/activate  # En Linux/Mac
    .\fruit_classifier_env\Scripts\activate   # En Windows
    ```
 
-2. **Instalar dependencias**: 
-   ```bash
-   pip install -r requirements.txt
+2. **Train Model**: 
    ```
-
-3. **Entrenar modelo**: 
-   ```bash
    python main.py
    ```
 
-4. **Probar modelo**: 
-   ```bash
+3. **Test the model**: 
+   ```
    python test_model.py
    ```
 
+
+
+## 📁 Project Structure
+
+```
+SmartFruitClassifier/
+|    
+├── 🤖 Run/ # Folder used to run the code          
+│   └── FruitDetector.py   #Class that has all necessary methods from training and testing
+|   └── main.py
+|   └── test_model.py
+| 
+├── �️ dataset/            
+│   ├── train/Fruit/       # Images for training
+│   ├── val/Fruit/         # Images for validation
+│   └── test/Fruit/        # Images for testing
+├──            
+├── 🧪 test_model.py       # Script para probar el modelo
+├── 🧠 best_fruit_model.h5 # Mejor modelo guardado
+└── 📊 training_history.png # Gráficas de entrenamiento
+```
 ### Datasets : From Kaggle and OpenImagesV7
 
 #### Name of dataset: OpenImages v7
@@ -50,24 +66,6 @@ The images are listed as having a CC BY 2.0 license.
 
 Short description of dataset and use case(s): bigger than ImageNet with 61M image level labels, 16M bounding boxes, 3M visual relationships, 2.7M instance segmentation masks, 600k localized narratives (synchronized audio and text caption, with mouse trace), and 66M point labels.
 
-## 📁 Project Structure
-
-```
-SmartFruitClassifier/
-├── 🤖 Utilities/           # Utilidades del proyecto
-│   └── FruitDetector.py   # Clase principal del clasificador CNN
-├── �️ dataset/            # Datos de entrenamiento
-│   ├── train/Fruit/       # Imágenes de entrenamiento
-│   ├── val/Fruit/         # Imágenes de validación
-│   └── test/Fruit/        # Imágenes de prueba
-├── � main.py             # Script principal de entrenamiento
-├── 🧪 test_model.py       # Script para probar el modelo
-├── 📝 requirements.txt    # Dependencias del proyecto
-├── ❗ TROUBLESHOOTING.md  # Guía de resolución de problemas
-├── 🧠 best_fruit_model.h5 # Mejor modelo guardado
-└── 📊 training_history.png # Gráficas de entrenamiento
-```
-
 ## 🚀 Usage
 
 1. **First time setup**: Run `python check_dependencies.py`
@@ -77,13 +75,13 @@ SmartFruitClassifier/
 
 ## ✨ Features
 
-- **CNN Personalizada**: Arquitectura de red neuronal convolucional diseñada específicamente para clasificación de frutas
-- **Aumento de Datos**: Rotación, zoom, y otras transformaciones para mejorar la generalización
-- **Early Stopping**: Prevención de sobreajuste monitorizando la pérdida de validación
-- **Guardado Automático**: Almacenamiento del mejor modelo durante el entrenamiento
-- **Métricas Completas**: Seguimiento de accuracy, precision y recall
-- **Visualización**: Gráficas detalladas del progreso del entrenamiento
-- **Predicción Simple**: Interfaz fácil de usar para clasificar nuevas imágenes
+- **CNN Personalised**: CNN architecture designed specifically for classifying fruits
+- **Data Augmentation**: Rotation, zoom, and other transformations to improve generalization
+- **Early Stopping**: Preventing over-adjustment by monitoring the loss of validation
+- **Automatic Save**: Saving the best training model
+- **Complete Metrics**: Following  accuracy, precision and recall
+- **Visualization**: Detailed graphics about the training
+- **Simple prediction**: Interfaz fácil de usar para clasificar nuevas imágenes
 
 ## 🔧 Recent Improvements
 
@@ -98,6 +96,5 @@ SmartFruitClassifier/
 
 [Official Documentation](https://docs.voxel51.com/tutorials/open_images.html)
 
-##### Data Download Script
-
-- [loadFiftyOne.py](Utilities/DatasetManagement/loadFiftyOne.py) - Downloads images from OpenImages V7
+##### Data Download 
+Downloads images from OpenImages V7
