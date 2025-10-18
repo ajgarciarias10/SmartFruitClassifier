@@ -12,7 +12,7 @@ Antonio and  Kyrylo have developed a machine learning system for fruit classific
 
 ## Requirements
 
-#### Python Version: 3.8+ (recommended 3.10+)
+#### Python Version: 3.13+
 
 ### 🛠️ Quick Setup
 
@@ -50,7 +50,6 @@ SmartFruitClassifier/
 │   ├── val/Fruit/         # Images for validation
 │   └── test/Fruit/        # Images for testing
 ├──            
-├── 🧪 test_model.py       # Script para probar el modelo
 ├── 🧠 best_fruit_model.h5 # Mejor modelo guardado
 └── 📊 training_history.png # Gráficas de entrenamiento
 ```
@@ -70,7 +69,7 @@ Short description of dataset and use case(s): bigger than ImageNet with 61M imag
 
 1. **First time setup**: Run `python check_dependencies.py`
 2. **Check dataset**: Run `python checkHowManyFruits.py`
-3. **Download more data** (optional): Run `python loadFiftyOne.py`
+3. **Download  datasets** (optional scripts): Run `python loadFiftyOne.py and download_fruits360_fill.py`
 4. **Train model**: Run `python main.py`
 
 ## ✨ Features
@@ -81,7 +80,7 @@ Short description of dataset and use case(s): bigger than ImageNet with 61M imag
 - **Automatic Save**: Saving the best training model
 - **Complete Metrics**: Following  accuracy, precision and recall
 - **Visualization**: Detailed graphics about the training
-- **Simple prediction**: Interfaz fácil de usar para clasificar nuevas imágenes
+- **Simple prediction**
 
 ## 🔧 Recent Improvements
 

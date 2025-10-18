@@ -26,25 +26,70 @@ SPLIT_NAME_MAP = {"train": "train", "validation": "val", "test": "test"}
 
 TARGET_TO_OI = {
     "Apple": "Apple",
+    "Banana": "Banana",
     "Cucumber": "Cucumber",
     "Pomegranate": "Pomegranate",
     "Grapefruit": "Grapefruit",
 }
 
-MIN_TOTAL_IMAGES = 10000
-IMAGES_PER_CLASS_PER_SPLIT = math.ceil(
-    MIN_TOTAL_IMAGES / (len(TARGET_TO_OI) * len(SPLITS))
-)
-TOTAL_REQUESTED_IMAGES = (
-    IMAGES_PER_CLASS_PER_SPLIT * len(TARGET_TO_OI) * len(SPLITS)
-)
+TARGET_CLASS_NAMES = list(TARGET_TO_OI.keys())
+
+TOTAL_IMAGES_TARGET = 10000
+SPLIT_RATIOS = {"train": 0.8, "validation": 0.1, "test": 0.1}
 
 OUT_ROOT = "dataset"
 BATCH_MULTIPLIERS = [3, 5, 8, 12, 20, 30]
 MAX_SAMPLES_PER_ATTEMPT = 50000
 DOWNLOAD_COOLDOWN_SECONDS = 1
 ERROR_COOLDOWN_SECONDS = 2
-DATASET_SOURCES = ["open-images-v7", "open-images-v6"]
+DATASET_SOURCES = ["open-images-v7"]
+
+
+def _compute_split_targets(total_images, splits, ratios):
+    """Compute integer image targets per split honoring the desired ratios."""
+    raw_values = [total_images * ratios[split] for split in splits]
+    base_values = [math.floor(val) for val in raw_values]
+    remainder = total_images - sum(base_values)
+
+    # Assign remaining images to splits with the largest fractional parts
+    fractional_order = sorted(
+        range(len(splits)),
+        key=lambda idx: raw_values[idx] - base_values[idx],
+        reverse=True,
+    )
+
+    for idx in fractional_order[:remainder]:
+        base_values[idx] += 1
+
+    return {split: base_values[i] for i, split in enumerate(splits)}
+
+
+def _distribute_per_class(total_count, class_names):
+    """Distribute split totals evenly across classes while staying in integers."""
+    if total_count <= 0:
+        return {name: 0 for name in class_names}
+
+    base = total_count // len(class_names)
+    remainder = total_count - (base * len(class_names))
+
+    distribution = {name: base for name in class_names}
+    for index, name in enumerate(class_names):
+        if index < remainder:
+            distribution[name] += 1
+
+    return distribution
+
+
+SPLIT_TOTAL_TARGETS = _compute_split_targets(
+    TOTAL_IMAGES_TARGET, SPLITS, SPLIT_RATIOS
+)
+
+TARGET_COUNTS_PER_CLASS_SPLIT = {
+    split: _distribute_per_class(total, TARGET_CLASS_NAMES)
+    for split, total in SPLIT_TOTAL_TARGETS.items()
+}
+
+TOTAL_REQUESTED_IMAGES = TOTAL_IMAGES_TARGET
 
 # Helpers ------------------------------------------------------------------- #
 def ensure_dir(path):
@@ -266,13 +311,15 @@ def main():
     print("\n" + "=" * 80)
     print("DESCARGA BALANCEADA DE IMAGENES LIMPIAS")
     print("=" * 80)
-    print(f"Clases objetivo: {list(TARGET_TO_OI.keys())}")
+    print(f"Clases objetivo: {TARGET_CLASS_NAMES}")
     print(f"Splits: {SPLITS}")
-    print(f"Minimo total requerido: {MIN_TOTAL_IMAGES} imagenes")
-    print(
-        f"Objetivo por clase/split: {IMAGES_PER_CLASS_PER_SPLIT} "
-        f"(total solicitado: {TOTAL_REQUESTED_IMAGES})"
-    )
+    print(f"Porcentajes por split: {SPLIT_RATIOS}")
+    print(f"Objetivo total: {TOTAL_REQUESTED_IMAGES} imagenes")
+    print("Objetivo por split:", SPLIT_TOTAL_TARGETS)
+    print("Objetivo por clase y split:")
+    for split in SPLITS:
+        targets = TARGET_COUNTS_PER_CLASS_SPLIT[split]
+        print(f"  - {split}: {targets}")
     print("Filtro aplicado: solo la fruta objetivo, sin objetos extra.")
     print("=" * 80 + "\n")
 
@@ -284,11 +331,12 @@ def main():
         print("#" * 80)
 
         for target_name, oi_name in TARGET_TO_OI.items():
+            target_count = TARGET_COUNTS_PER_CLASS_SPLIT[split][target_name]
             download_one_class_for_split(
                 target_name=target_name,
                 oi_name=oi_name,
                 split=split,
-                target_count=IMAGES_PER_CLASS_PER_SPLIT,
+                target_count=target_count,
             )
 
     total_time_minutes = (time.time() - total_start) / 60
@@ -316,20 +364,20 @@ def main():
         for target_name in TARGET_TO_OI.keys():
             class_path = os.path.join(split_path, target_name)
             count = count_existing_images(class_path)
+            expected = TARGET_COUNTS_PER_CLASS_SPLIT[split][target_name]
 
-            if count == IMAGES_PER_CLASS_PER_SPLIT:
+            if count == expected:
                 status = "OK"
-            elif count > IMAGES_PER_CLASS_PER_SPLIT:
+            elif count > expected:
                 status = "Sobre"
             elif count == 0:
                 status = "Vacio"
             else:
                 status = "Faltan"
 
-            print(f"{target_name:<15} {count:>12} {status:>12}")
+            print(f"{target_name:<15} {count:>12} {status:>12} (objetivo {expected})")
 
-    print("\nObjetivo por clase/split:", IMAGES_PER_CLASS_PER_SPLIT)
-    print("Imagenes totales solicitadas:", TOTAL_REQUESTED_IMAGES)
+    print("\nObjetivos totales:", TOTAL_REQUESTED_IMAGES)
     print("=" * 80 + "\n")
 
 
