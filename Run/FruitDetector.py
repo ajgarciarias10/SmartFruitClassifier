@@ -9,13 +9,14 @@ import matplotlib.pyplot as plt
 import os
 from pathlib import Path
 class FruitDetector:
-
+    # Initialize the FruitDetector class
     def __init__(self, img_size, num_classes):
         self.img_size = img_size
         self.num_classes = num_classes
         self.model = None
         self.history = None
 
+    # Create data generators for training and validation datasets
     def create_data_generators(self, TRAIN_DIR, BATCH_SIZE, VAL_DIR):
     
         # Training data augmentation
@@ -25,9 +26,11 @@ class FruitDetector:
             rotation_range=40,
             width_shift_range=0.2,
             height_shift_range=0.2,
+             # Shear is like inclinate  the image 20%
             shear_range=0.2,
             zoom_range=0.2,
             horizontal_flip=True,
+            #Is to fill in new pixels that may appear after a transformation
             fill_mode='nearest'
         )
 
@@ -39,6 +42,7 @@ class FruitDetector:
             TRAIN_DIR,
             target_size=(self.img_size, self.img_size),
             batch_size=BATCH_SIZE,
+            # Is because is a clasification problem with more than 2 classes
             class_mode='categorical',
             shuffle=True
         )
@@ -80,7 +84,11 @@ class FruitDetector:
 
         # Compile model
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE),#Adam is a good optimizer for most cases
+            #The optimizer is Adam, a popular optimization algorithm that adapts the learning rate for each parameter.
+            optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+            #Calculation loss function with categorical crossentropy
+            #Categorical crossentropy is used for multi-class classification problems 
+            # where the labels are one-hot encoded.
             loss='categorical_crossentropy',
             metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()]
         )

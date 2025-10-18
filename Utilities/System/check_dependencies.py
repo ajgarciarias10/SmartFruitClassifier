@@ -1,119 +1,119 @@
 """
-Check system requirements and dependencies for Smart Fruit Classifier
+Check system requirements and dependencies for the Smart Fruit Classifier project.
 """
 import sys
-import subprocess
 
-def check_python_version():
-    """Check if Python version is suitable"""
+
+REQUIRED_PYTHON = (3, 13)
+
+
+def check_python_version() -> bool:
+    """Ensure Python 3.13+ is active."""
     version = sys.version_info
-    print(f"Python version: {version.major}.{version.minor}.{version.micro}")
-    
-    if version.major < 3 or (version.major == 3 and version.minor < 8):
-        print("❌ Python 3.8+ required")
-        return False
-    else:
-        print("✅ Python version OK")
-        return True
+    print(f"Python version detected: {version.major}.{version.minor}.{version.micro}")
 
-def check_package(package_name, import_name=None):
-    """Check if a package is installed"""
-    if import_name is None:
-        import_name = package_name
-        
+    meets_requirement = (version.major, version.minor) >= REQUIRED_PYTHON
+    if meets_requirement:
+        print("OK  Python version requirement satisfied (>= 3.13)")
+    else:
+        print("ERR Python 3.13 or newer is required")
+    return meets_requirement
+
+
+def check_package(package_name: str, import_name: str | None = None) -> bool:
+    """Check whether a package can be imported."""
+    module_name = import_name or package_name
+
     try:
-        __import__(import_name)
-        print(f"✅ {package_name} - OK")
+        __import__(module_name)
+        print(f"OK  {package_name}")
         return True
     except ImportError:
-        print(f"❌ {package_name} - NOT INSTALLED")
+        print(f"ERR {package_name} not installed")
         return False
-    except AttributeError as e:
-        if "_ARRAY_API" in str(e) and package_name == "tensorflow":
-            print(f"⚠️  {package_name} - COMPATIBILITY ISSUE (NumPy 2.x)")
-            return False
+    except AttributeError as exc:
+        if "_ARRAY_API" in str(exc) and module_name == "tensorflow":
+            print("WARN tensorflow compatibility issue (NumPy 2.x)")
         else:
-            print(f"❌ {package_name} - ERROR: {e}")
-            return False
-    except Exception as e:
-        print(f"❌ {package_name} - ERROR: {e}")
+            print(f"ERR {package_name} attribute error: {exc}")
+        return False
+    except Exception as exc:  # pragma: no cover - defensive logging
+        print(f"ERR {package_name} unexpected error: {exc}")
         return False
 
-def check_tensorflow_gpu():
-    """Check TensorFlow GPU availability"""
+
+def check_tensorflow_gpu() -> None:
+    """Report TensorFlow GPU availability."""
     try:
-        import tensorflow as tf
-        gpus = tf.config.experimental.list_physical_devices('GPU')
-        if gpus:
-            print(f"🚀 TensorFlow GPU support: {len(gpus)} GPU(s) available")
-            for i, gpu in enumerate(gpus):
-                print(f"   GPU {i}: {gpu.name}")
-        else:
-            print("⚠️  TensorFlow: CPU only (no GPU detected)")
-    except ImportError as e:
-        print("❌ TensorFlow not available")
-    except AttributeError as e:
-        if "_ARRAY_API" in str(e):
-            print("⚠️  TensorFlow/NumPy compatibility issue detected")
-            print("   Try: pip install 'numpy<2.0.0' tensorflow")
-        else:
-            print(f"❌ TensorFlow error: {e}")
-    except Exception as e:
-        print(f"❌ TensorFlow error: {e}")
+        import tensorflow as tf  # type: ignore
 
-def main():
+        gpus = tf.config.experimental.list_physical_devices("GPU")
+        if gpus:
+            print(f"INFO TensorFlow GPU support: {len(gpus)} GPU(s) available")
+            for idx, gpu in enumerate(gpus):
+                print(f"     GPU {idx}: {gpu.name}")
+        else:
+            print("WARN TensorFlow: CPU only (no GPU detected)")
+    except ImportError:
+        print("ERR TensorFlow not available")
+    except AttributeError as exc:
+        if "_ARRAY_API" in str(exc):
+            print("WARN TensorFlow/NumPy compatibility issue detected")
+            print("     Try: pip install 'numpy<2.0.0' tensorflow")
+        else:
+            print(f"ERR TensorFlow attribute error: {exc}")
+    except Exception as exc:  # pragma: no cover - defensive logging
+        print(f"ERR TensorFlow unexpected error: {exc}")
+
+
+def main() -> None:
     print("=" * 60)
     print("SMART FRUIT CLASSIFIER - DEPENDENCY CHECK")
     print("=" * 60)
-    
-    # Check Python version
+
     python_ok = check_python_version()
-    
-    print("\n📦 Required packages:")
-    
-    # Core ML packages
-    packages = [
+
+    print("\nRequired packages:")
+    required_packages = [
         ("tensorflow", "tensorflow"),
-        ("numpy", "numpy"),  
+        ("numpy", "numpy"),
         ("matplotlib", "matplotlib"),
         ("Pillow (PIL)", "PIL"),
     ]
-    
+
     all_ok = python_ok
-    for pkg_name, import_name in packages:
-        if not check_package(pkg_name, import_name):
+    for package_label, module_name in required_packages:
+        if not check_package(package_label, module_name):
             all_ok = False
-    
-    print("\n🔧 Optional packages:")
-    
-    # Optional packages
+
+    print("\nOptional packages:")
     optional_packages = [
         ("fiftyone", "fiftyone"),
         ("opencv-python", "cv2"),
+        ("kaggle", "kaggle"),
     ]
-    
-    for pkg_name, import_name in optional_packages:
-        check_package(pkg_name, import_name)
-    
-    # Check GPU support
-    print("\n🎮 GPU Support:")
+    for package_label, module_name in optional_packages:
+        check_package(package_label, module_name)
+
+    print("\nGPU support check:")
     check_tensorflow_gpu()
-    
+
     print("\n" + "=" * 60)
-    
+
     if all_ok:
-        print("✅ All required dependencies are installed!")
+        print("OK  All required dependencies are installed!")
         print("You can run the fruit classifier.")
     else:
-        print("❌ Some required dependencies are missing.")
-        print("\n🔧 RECOMMENDED FIX:")
+        print("ERR Some required dependencies are missing.")
+        print("\nRecommended fix:")
         print("pip install -r requirements.txt")
-        print("\n💡 Alternative (manual installation):")
+        print("\nAlternative (manual installation):")
         print('pip install "numpy<2.0.0" tensorflow matplotlib pillow')
-        print("\n📦 Optional packages:")
+        print("\nOptional packages:")
         print("pip install fiftyone opencv-python")
-    
+
     print("=" * 60)
+
 
 if __name__ == "__main__":
     main()
