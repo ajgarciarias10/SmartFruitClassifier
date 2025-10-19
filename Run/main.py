@@ -4,13 +4,8 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, os.pardir))
 
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
-
-from FruitDetector import FruitDetector  # noqa: E402
-from Utilities.DatasetManagement.utils import (  # noqa: E402
+from FruitDetector import FruitDetector
+from Utilities.DatasetManagement.utils import (  
     validate_dataset_structure,
     print_dataset_summary,
     check_model_file,
@@ -71,8 +66,8 @@ model_info = check_model_file(os.path.join(PROJECT_ROOT, 'final_fruit_model.h5')
 print(f"\n {model_info['message']}")
 
 # Example prediction (uncomment to use)
-# predicted_fruit, confidence, probs = detector.predict_image(
-#     'test_image.jpg',
-#     class_names
-# )
-# print(f"\nPredicted: {predicted_fruit} (Confidence: {confidence:.2f}%)")
+predicted_fruit, confidence, probs = detector.predict_image(
+    'test_image.jpg',
+     class_names
+ )
+print(f"\nPredicted: {predicted_fruit} (Confidence: {confidence:.2f}%)")

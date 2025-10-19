@@ -23,16 +23,10 @@ Antonio and  Kyrylo have developed a machine learning system for fruit classific
    .\fruit_classifier_env\Scripts\activate   # En Windows
    ```
 
-2. **Train Model**: 
+2. **Train Model and Test the model**: 
    ```
    python main.py
    ```
-
-3. **Test the model**: 
-   ```
-   python test_model.py
-   ```
-
 
 
 ## 📁 Project Structure
@@ -43,27 +37,32 @@ SmartFruitClassifier/
 ├── 🤖 Run/ # Folder used to run the code          
 │   └── FruitDetector.py   #Class that has all necessary methods from training and testing
 |   └── main.py
-|   └── test_model.py
 | 
 ├── �️ dataset/            
 │   ├── train/Fruit/       # Images for training
 │   ├── val/Fruit/         # Images for validation
 │   └── test/Fruit/        # Images for testing
 ├──            
-├── 🧠 best_fruit_model.h5 # Mejor modelo guardado
-└── 📊 training_history.png # Gráficas de entrenamiento
+├── 🧠 best_fruit_model.h5 # Best Model Saved
+└── 📊 training_history.png # Training Graphics
 ```
+
+
+## 🎞️ Images Structure 
+### Usage of images
+Number of samples: 10,000 thousands images
+* 80% Training
+* 10% Validation
+* 10 % Test
 ### Datasets : From Kaggle and OpenImagesV7
+* Kaggle Dataset: [URL of dataset](https://www.kaggle.com/datasets/moltean/fruits?)
+* Name of dataset: OpenImages v7 [URL of dataset](https://g.co/dataset/open-) 
+  License of dataset: licensed by Google Inc. under CC BY 4.0 license.
+  The images are listed as having a CC BY 2.0 license.
+  Short description of dataset and use case(s): bigger than ImageNet with 61M image level labels, 16M bounding boxes, 3M visual relationships, 2.7M instance segmentation masks, 600k localized narratives (synchronized audio and text caption, with mouse trace), and 66M point labels.
 
-#### Name of dataset: OpenImages v7
-
-[URL of dataset](https://g.co/dataset/open-)
-
-License of dataset: licensed by Google Inc. under CC BY 4.0 license.
-
-The images are listed as having a CC BY 2.0 license.
-
-Short description of dataset and use case(s): bigger than ImageNet with 61M image level labels, 16M bounding boxes, 3M visual relationships, 2.7M instance segmentation masks, 600k localized narratives (synchronized audio and text caption, with mouse trace), and 66M point labels.
+##### Software used to download FiftyOne Installation Guide (Software Used for download openimages images)
+[Official Documentation](https://docs.voxel51.com/tutorials/open_images.html)
 
 ## 🚀 Usage
 
@@ -81,19 +80,3 @@ Short description of dataset and use case(s): bigger than ImageNet with 61M imag
 - **Complete Metrics**: Following  accuracy, precision and recall
 - **Visualization**: Detailed graphics about the training
 - **Simple prediction**
-
-## 🔧 Recent Improvements
-
-- ✅ Fixed path handling (now uses absolute paths)
-- ✅ Added input validation and error checking
-- ✅ Improved code organization with utils.py
-- ✅ Better error messages and user feedback
-- ✅ Dependency checking system
-- ✅ Dataset validation tools
-
-##### FiftyOne Installation Guide
-
-[Official Documentation](https://docs.voxel51.com/tutorials/open_images.html)
-
-##### Data Download 
-Downloads images from OpenImages V7
