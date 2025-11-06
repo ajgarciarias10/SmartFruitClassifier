@@ -136,8 +136,8 @@ def main() -> None:
             "Apple": ["apple"],
             "Banana": ["banana"],
             "Cucumber": ["cucumber"],
-            "Pomegranate": ["pomegranate"],
-            "Grapefruit": ["grapefruit"],
+            "Pear": ["pear"],
+            "Tomato": ["tomato"],
         }
 
     candidates_cache: Dict[str, List[Path]] = {}

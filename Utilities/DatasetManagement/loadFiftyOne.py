@@ -28,8 +28,8 @@ TARGET_TO_OI = {
     "Apple": "Apple",
     "Banana": "Banana",
     "Cucumber": "Cucumber",
-    "Pomegranate": "Pomegranate",
-    "Grapefruit": "Grapefruit",
+    "Pear": "Pear",
+    "Tomato": "Tomato",
 }
 
 TARGET_CLASS_NAMES = list(TARGET_TO_OI.keys())

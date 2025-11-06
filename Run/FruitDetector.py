@@ -6,7 +6,7 @@ from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 import numpy as np
 import matplotlib.pyplot as plt
-import os
+# import os
 from pathlib import Path
 class FruitDetector:
     # Initialize the FruitDetector class

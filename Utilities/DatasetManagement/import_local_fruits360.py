@@ -185,8 +185,8 @@ def main() -> None:
             "Apple": ["apple"],
             "Banana": ["banana"],
             "Cucumber": ["cucumber"],
-            "Pomegranate": ["pomegranate"],
-            "Grapefruit": ["grapefruit"],
+            "Pear": ["pear"],
+            "Tomato": ["tomato"],
         }
 
     plan = _plan_copy(loader, pending, keyword_map)

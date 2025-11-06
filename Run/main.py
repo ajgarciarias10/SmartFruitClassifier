@@ -15,7 +15,7 @@ from Utilities.DatasetManagement.utils import (
 IMG_SIZE = 224
 BATCH_SIZE = 32
 EPOCHS = 25
-NUM_CLASSES = 5  # apple, banana, cucumber, grapefruit, pomegranate
+NUM_CLASSES = 5  # apple, banana, cucumber, pear, tomato
 LEARNING_RATE = 0.001
 
 # Dataset paths
