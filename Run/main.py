@@ -5,6 +5,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, os.pardir))
 
 from FruitDetector import FruitDetector
+from simpleOptimizer import run_optimizer_and_apply
 from Utilities.DatasetManagement.utils import (  
     validate_dataset_structure,
     print_dataset_summary,
@@ -25,30 +26,16 @@ VAL_DIR = os.path.join(DATASET_ROOT, 'val', 'Fruit')
 TEST_DIR = os.path.join(DATASET_ROOT, 'test', 'Fruit')
 
 # Main execution
-print("Fruit Classification  Model \n")
+print("Fruit Classification Model \n")
 
-# Initialize detector
-detector = FruitDetector(IMG_SIZE, NUM_CLASSES)
-
-# Create data generators
-print("Loading data...")
-train_gen, val_gen = detector.create_data_generators(TRAIN_DIR, BATCH_SIZE, VAL_DIR)
-
-# Print class names
-class_names = list(train_gen.class_indices.keys())
-print(f"\nClasses: {class_names}")
-print(f"Number of training samples: {train_gen.samples}")
-print(f"Number of validation samples: {val_gen.samples}")
-
-
-# Build model
-print("\nBuilding model...")
-model = detector.build_model(LEARNING_RATE)
-model.summary()
-
-# Train model
-print("\nStarting training...")
-history = detector.train(train_gen, val_gen, epochs=EPOCHS)
+print("Particle Swarm Optimization of Hyperparameters Starting...")
+detector, history = run_optimizer_and_apply(
+    TRAIN_DIR,
+    VAL_DIR,
+    NUM_CLASSES,
+    IMG_SIZE
+)
+print("\Optimizing completed. Using the best hyperparameters found.")
 
 # Plot results
 detector.plot_training_history()
@@ -66,8 +53,10 @@ model_info = check_model_file(os.path.join(PROJECT_ROOT, 'final_fruit_model.h5')
 print(f"\n {model_info['message']}")
 
 # Example prediction (uncomment to use)
+train_gen, _ = detector.create_data_generators(TRAIN_DIR, BATCH_SIZE, VAL_DIR)
+class_names = list(train_gen.class_indices.keys())
 predicted_fruit, confidence, probs = detector.predict_image(
     'test_image.jpg',
-     class_names
- )
+    class_names
+)
 print(f"\nPredicted: {predicted_fruit} (Confidence: {confidence:.2f}%)")

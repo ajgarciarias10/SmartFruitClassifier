@@ -62,25 +62,30 @@ class FruitDetector:
             # Custom CNN architecture
         
         model = keras.Sequential([
-                #Arguments (net size , filter size, activation function, input shape)
-                layers.Conv2D(32, (3, 3), activation='relu', #relu  because for images is a good option
-                              input_shape=(self.img_size, self.img_size, 3)),
+                # First Conv Block - Reduction to 24 filters and added BatchNormalization
+                layers.Conv2D(24, (3, 3), padding='same', input_shape=(self.img_size, self.img_size, 3)),
+                layers.BatchNormalization(),
+                layers.Activation('relu'),
                 layers.MaxPooling2D(2, 2),
 
-                layers.Conv2D(64, (3, 3), activation='relu'),
+                # Second Conv Block - Efficient feature extraction
+                layers.Conv2D(48, (3, 3), padding='same'),
+                layers.BatchNormalization(),
+                layers.Activation('relu'),
                 layers.MaxPooling2D(2, 2),
 
-                layers.Conv2D(128, (3, 3), activation='relu'),
+                # Third Conv Block - Moderate increase in filters
+                layers.Conv2D(96, (3, 3), padding='same'),
+                layers.BatchNormalization(),
+                layers.Activation('relu'),
                 layers.MaxPooling2D(2, 2),
 
-                layers.Conv2D(128, (3, 3), activation='relu'),
-                layers.MaxPooling2D(2, 2),
-
+                # Dense layers with reduced complexity
                 layers.Flatten(),
-                layers.Dropout(0.5),
-                layers.Dense(512, activation='relu'),
+                layers.Dropout(0.4),  # Slightly reduced dropout
+                layers.Dense(256, activation='relu'),  # Reduced from 512 to 256
                 layers.Dropout(0.3),
-                layers.Dense(self.num_classes, activation='softmax')]) #The output is a probability distribution vector when each element is the probability of each class
+                layers.Dense(self.num_classes, activation='softmax')])
 
         # Compile model
         model.compile(
