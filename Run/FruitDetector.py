@@ -17,21 +17,35 @@ class FruitDetector:
         self.history = None
 
     # Create data generators for training and validation datasets
-    def create_data_generators(self, TRAIN_DIR, BATCH_SIZE, VAL_DIR):
+    def create_data_generators(self, TRAIN_DIR, BATCH_SIZE, VAL_DIR, augment_config=None):
     
         # Training data augmentation
         #This part is used to make differences between images of the same class
+        default_aug = {
+            'rotation_range': 40,
+            'width_shift_range': 0.2,
+            'height_shift_range': 0.2,
+            'shear_range': 0.2,
+            'zoom_range': 0.2,
+            'horizontal_flip': True,
+            'fill_mode': 'nearest'
+        }
+        if augment_config:
+            for key, value in augment_config.items():
+                if value is not None:
+                    default_aug[key] = value
+
         train_datagen = ImageDataGenerator(
             rescale=1. / 255,
-            rotation_range=40,
-            width_shift_range=0.2,
-            height_shift_range=0.2,
+            rotation_range=default_aug['rotation_range'],
+            width_shift_range=default_aug['width_shift_range'],
+            height_shift_range=default_aug['height_shift_range'],
              # Shear is like inclinate  the image 20%
-            shear_range=0.2,
-            zoom_range=0.2,
-            horizontal_flip=True,
+            shear_range=default_aug['shear_range'],
+            zoom_range=default_aug['zoom_range'],
+            horizontal_flip=default_aug['horizontal_flip'],
             #Is to fill in new pixels that may appear after a transformation
-            fill_mode='nearest'
+            fill_mode=default_aug['fill_mode']
         )
 
         # Validation/Test data - only rescaling
@@ -121,13 +135,28 @@ class FruitDetector:
         ]
         return callbacks
 
-    def train(self, train_generator, val_generator, epochs):
+    def train(self, train_generator, val_generator, epochs, data_fraction=0.2):
         """Train the model"""
         callbacks = self.setup_callbacks()
 
+        if not 0 < data_fraction <= 1:
+            raise ValueError("data_fraction must be between 0 and 1.")
+
+        #This is just for adjusting the photos that we need to use for training and validation 
+        steps_per_epoch = max(
+            1,
+            int((train_generator.samples * data_fraction) // train_generator.batch_size)
+        )
+        val_steps = max(
+            1,
+            int((val_generator.samples * data_fraction) // val_generator.batch_size)
+        )
+
         self.history = self.model.fit(
             train_generator,
+            steps_per_epoch=steps_per_epoch,
             validation_data=val_generator,
+            validation_steps=val_steps,
             epochs=epochs,
             callbacks=callbacks,
             verbose=1

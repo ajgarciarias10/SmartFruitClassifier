@@ -7,13 +7,17 @@ from FruitDetector import FruitDetector
 
 # Parameter ranges to optimize with their limits and types
 PARAM_RANGES = {
-    "learning_rate": (1e-5, 1e-2, "log"),      # Learning rate
+    "learning_rate": (1e-5, 5e-3, "log"),      # Learning rate
     "batch_size": (16, 64, "int"),             # Batch size
-    "max_epochs": (10, 30, "int"),             # Maximum epochs
+    "max_epochs": (10, 40, "int"),             # Maximum epochs
+    "rotation_range": (0, 60, "float"),        # Data augmentation rotation
+    "shift_range": (0.0, 0.3, "float"),        # Width/height shift
+    "zoom_range": (0.0, 0.3, "float"),         # Zoom augmentation
+    "shear_range": (0.0, 0.3, "float"),        # Shear augmentation
+    "horizontal_flip": (0, 1, "bool"),         # Whether to use horizontal flip
 }
 
-# Tipos para anotaciones
-Params = Dict[str, Union[int, float]]
+Params = Dict[str, Union[int, float, bool]]
 FitnessFunc = Callable[[Params], float]
 
 @dataclass
@@ -48,6 +52,8 @@ class SimpleOptimizer:
                 value = 10 ** random.uniform(math.log10(min_val), math.log10(max_val))
             elif param_type == "int":
                 value = int(random.uniform(min_val, max_val))
+            elif param_type == "bool":
+                value = bool(random.getrandbits(1))
             else:  # float
                 value = random.uniform(min_val, max_val)
             solution[param] = value
@@ -77,6 +83,9 @@ class SimpleOptimizer:
         # Modify a random parameter
         param = random.choice(list(PARAM_RANGES.keys()))
         min_val, max_val, param_type = PARAM_RANGES[param]
+        if param_type == "bool":
+            neighbor[param] = not current[param]
+            return neighbor
         
         # Calculate new value
         
@@ -142,21 +151,6 @@ class SimpleOptimizer:
 
         return self.best_solution
 
-def example_usage():
-    # Ejemplo de uso del optimizador
-    def dummy_fitness(params: Params) -> float:
-        """Función de fitness de ejemplo."""
-        return -sum((p - 0.5) ** 2 for p in params.values())
-
-    # Crear y ejecutar el optimizador
-    optimizer = SimpleOptimizer(colony_size=10, max_trials=5)
-    optimizer.initialize(dummy_fitness)
-    best = optimizer.optimize(iterations=20)
-    
-    print("Mejor solución encontrada:")
-    for param, value in best.parameters.items():
-        print(f"{param}: {value}")
-    print(f"Fitness: {best.fitness}")
 
 def run_optimizer_and_apply(train_dir: str, val_dir: str, num_classes: int = 5, img_size: int = 224):
     """
@@ -175,21 +169,29 @@ def run_optimizer_and_apply(train_dir: str, val_dir: str, num_classes: int = 5, 
         """Fitness function that trains and evaluates the model with the given parameters."""
         detector = FruitDetector(img_size, num_classes)
         
-        # Crear generadores de datos
+        augment_config = {
+            'rotation_range': params['rotation_range'],
+            'width_shift_range': params['shift_range'],
+            'height_shift_range': params['shift_range'],
+            'zoom_range': params['zoom_range'],
+            'shear_range': params['shear_range'],
+            'horizontal_flip': params['horizontal_flip']
+        }
         train_gen, val_gen = detector.create_data_generators(
-            train_dir, 
-            int(params['batch_size']), 
-            val_dir
+            train_dir,
+            int(params['batch_size']),
+            val_dir,
+            augment_config=augment_config
         )
         
-        # Build model with only learning rate parameter
-        model = detector.build_model(params['learning_rate'])
+        # Build model with learning rate parameter
+        detector.build_model(params['learning_rate'])
         
         # Train for a few epochs for quick evaluation
         history = detector.train(
             train_gen, 
             val_gen, 
-            epochs=int(params['max_epochs'])
+            epochs=int(params['max_epochs']),data_fraction=0.2
         )
         
         # Use the final validation accuracy as fitness metric
@@ -207,19 +209,28 @@ def run_optimizer_and_apply(train_dir: str, val_dir: str, num_classes: int = 5, 
     
     # Apply the best parameters found to the final model
     detector = FruitDetector(img_size, num_classes)
+    augment_config = {
+        'rotation_range': best_solution.parameters['rotation_range'],
+        'width_shift_range': best_solution.parameters['shift_range'],
+        'height_shift_range': best_solution.parameters['shift_range'],
+        'zoom_range': best_solution.parameters['zoom_range'],
+        'shear_range': best_solution.parameters['shear_range'],
+        'horizontal_flip': best_solution.parameters['horizontal_flip']
+    }
     train_gen, val_gen = detector.create_data_generators(
-        train_dir, 
-        int(best_solution.parameters['batch_size']), 
-        val_dir
+        train_dir,
+        int(best_solution.parameters['batch_size']),
+        val_dir,
+        augment_config=augment_config
     )
     
-    model = detector.build_model(best_solution.parameters['learning_rate'])
+    detector.build_model(best_solution.parameters['learning_rate'])
     
     # Train the final model with the best parameters
     history = detector.train(
         train_gen, 
         val_gen, 
-        epochs=int(best_solution.parameters['max_epochs'])
+        epochs=int(best_solution.parameters['max_epochs']),data_fraction=0.2
     )
     
     # Visualize results
