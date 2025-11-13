@@ -72,42 +72,40 @@ class FruitDetector:
 
         return train_generator, val_generator
 
-    def build_model(self,LEARNING_RATE):
-            # Custom CNN architecture
-        
+    def build_model(self, LEARNING_RATE):
+        # MISMA CNN QUE EL MODELO B
         model = keras.Sequential([
-                # First Conv Block - Reduction to 24 filters and added BatchNormalization
-                layers.Conv2D(24, (3, 3), padding='same', input_shape=(self.img_size, self.img_size, 3)),
-                layers.BatchNormalization(),
-                layers.Activation('relu'),
-                layers.MaxPooling2D(2, 2),
+            # First Conv Block
+            layers.Conv2D(
+                32, (3, 3),
+                activation='relu',  # ReLU because for images is a good option
+                input_shape=(self.img_size, self.img_size, 3)
+            ),
+            layers.MaxPooling2D(2, 2),
 
-                # Second Conv Block - Efficient feature extraction
-                layers.Conv2D(48, (3, 3), padding='same'),
-                layers.BatchNormalization(),
-                layers.Activation('relu'),
-                layers.MaxPooling2D(2, 2),
+            # Second Conv Block
+            layers.Conv2D(64, (3, 3), activation='relu'),
+            layers.MaxPooling2D(2, 2),
 
-                # Third Conv Block - Moderate increase in filters
-                layers.Conv2D(96, (3, 3), padding='same'),
-                layers.BatchNormalization(),
-                layers.Activation('relu'),
-                layers.MaxPooling2D(2, 2),
+            # Third Conv Block
+            layers.Conv2D(128, (3, 3), activation='relu'),
+            layers.MaxPooling2D(2, 2),
 
-                # Dense layers with reduced complexity
-                layers.Flatten(),
-                layers.Dropout(0.4),  # Slightly reduced dropout
-                layers.Dense(256, activation='relu'),  # Reduced from 512 to 256
-                layers.Dropout(0.3),
-                layers.Dense(self.num_classes, activation='softmax')])
+            # Fourth Conv Block
+            layers.Conv2D(128, (3, 3), activation='relu'),
+            layers.MaxPooling2D(2, 2),
+
+            # Dense layers
+            layers.Flatten(),
+            layers.Dropout(0.5),
+            layers.Dense(512, activation='relu'),
+            layers.Dropout(0.3),
+            layers.Dense(self.num_classes, activation='softmax')  # Probabilities per class
+        ])
 
         # Compile model
         model.compile(
-            #The optimizer is Adam, a popular optimization algorithm that adapts the learning rate for each parameter.
             optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE),
-            #Calculation loss function with categorical crossentropy
-            #Categorical crossentropy is used for multi-class classification problems 
-            # where the labels are one-hot encoded.
             loss='categorical_crossentropy',
             metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()]
         )
