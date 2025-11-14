@@ -37,7 +37,7 @@ def validate_dataset_structure(base_dir):
     """
     results = {}
     
-    expected_classes = ["Apple", "Banana", "Cucumber", "Pear", "Tomato"]
+    expected_classes = ["Apple", "Banana", "Cucumber", "Grapefruit", "Pomegranate"]
     splits = ["train", "val", "test"]
     
     for split in splits:

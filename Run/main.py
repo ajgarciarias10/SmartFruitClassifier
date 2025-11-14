@@ -4,9 +4,13 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, os.pardir))
 
+# Ensure project root is on the import path when running from VS Code or other IDEs
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from FruitDetector import FruitDetector
 from simpleOptimizer import run_optimizer_and_apply
-from Utilities.DatasetManagement.utils import (  
+from Utilities.DatasetManagement.utils import (
     validate_dataset_structure,
     print_dataset_summary,
     check_model_file,
@@ -15,8 +19,7 @@ from Utilities.DatasetManagement.utils import (
 # Configuration
 IMG_SIZE = 224
 BATCH_SIZE = 32
-EPOCHS = 25
-NUM_CLASSES = 5  # apple, banana, cucumber, pear, tomato
+NUM_CLASSES = 5  # apple, banana, cucumber, Grapefruit, PomeGranate
 LEARNING_RATE = 0.001
 
 # Dataset paths
@@ -35,7 +38,7 @@ detector, history = run_optimizer_and_apply(
     NUM_CLASSES,
     IMG_SIZE
 )
-print("\Optimizing completed. Using the best hyperparameters found.")
+print("Optimizing completed. Using the best hyperparameters found.")
 
 # Plot results
 detector.plot_training_history()

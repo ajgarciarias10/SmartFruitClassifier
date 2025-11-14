@@ -1,3 +1,4 @@
+import math
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -116,6 +117,10 @@ class FruitDetector:
     def setup_callbacks(self):
         """Setup training callbacks"""
         #Early stopping to prevent overfitting
+        # Use project root to create a safe output path and prefer the native Keras format (.keras)
+        project_root = Path(__file__).resolve().parents[1]
+        best_model_path = str(project_root / 'best_fruit_model.keras')
+
         callbacks = [
             EarlyStopping(
                 monitor='val_loss',
@@ -123,9 +128,9 @@ class FruitDetector:
                 restore_best_weights=True,
                 verbose=1
             ),
-            #Save the best model during training 
+            # Save the best model during training to native Keras format to avoid HDF5 issues on Windows/OneDrive
             ModelCheckpoint(
-                'best_fruit_model.h5',
+                best_model_path,
                 monitor='val_accuracy',
                 save_best_only=True,
                 verbose=1
@@ -140,21 +145,16 @@ class FruitDetector:
         if not 0 < data_fraction <= 1:
             raise ValueError("data_fraction must be between 0 and 1.")
 
-        #This is just for adjusting the photos that we need to use for training and validation 
-        steps_per_epoch = max(
-            1,
-            int((train_generator.samples * data_fraction) // train_generator.batch_size)
-        )
-        val_steps = max(
-            1,
-            int((val_generator.samples * data_fraction) // val_generator.batch_size)
-        )
+        # Derive number of batches per epoch respecting requested fraction
+        total_steps = max(1, len(train_generator))
+        desired_steps = max(1, int(math.ceil(total_steps * data_fraction)))
+        steps_per_epoch = min(total_steps, desired_steps)
+        train_generator.reset()
 
         self.history = self.model.fit(
             train_generator,
             steps_per_epoch=steps_per_epoch,
             validation_data=val_generator,
-            validation_steps=val_steps,
             epochs=epochs,
             callbacks=callbacks,
             verbose=1
@@ -168,11 +168,12 @@ class FruitDetector:
             print("No training history available. Train the model first.")
             return
 
+        history_dict = self.history.history
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
 
         # Accuracy
-        axes[0, 0].plot(self.history.history['accuracy'], label='Train Accuracy')
-        axes[0, 0].plot(self.history.history['val_accuracy'], label='Val Accuracy')
+        axes[0, 0].plot(history_dict['accuracy'], label='Train Accuracy')
+        axes[0, 0].plot(history_dict['val_accuracy'], label='Val Accuracy')
         axes[0, 0].set_title('Model Accuracy')
         axes[0, 0].set_xlabel('Epoch')
         axes[0, 0].set_ylabel('Accuracy')
@@ -180,8 +181,8 @@ class FruitDetector:
         axes[0, 0].grid(True)
 
         # Loss
-        axes[0, 1].plot(self.history.history['loss'], label='Train Loss')
-        axes[0, 1].plot(self.history.history['val_loss'], label='Val Loss')
+        axes[0, 1].plot(history_dict['loss'], label='Train Loss')
+        axes[0, 1].plot(history_dict['val_loss'], label='Val Loss')
         axes[0, 1].set_title('Model Loss')
         axes[0, 1].set_xlabel('Epoch')
         axes[0, 1].set_ylabel('Loss')
@@ -189,22 +190,34 @@ class FruitDetector:
         axes[0, 1].grid(True)
 
         # Precision
-        axes[1, 0].plot(self.history.history['precision'], label='Train Precision')
-        axes[1, 0].plot(self.history.history['val_precision'], label='Val Precision')
-        axes[1, 0].set_title('Model Precision')
-        axes[1, 0].set_xlabel('Epoch')
-        axes[1, 0].set_ylabel('Precision')
-        axes[1, 0].legend()
-        axes[1, 0].grid(True)
+        precision_key = next((k for k in history_dict if k.startswith('precision')), None)
+        val_precision_key = next((k for k in history_dict if k.startswith('val_precision')), None)
+        if precision_key and val_precision_key:
+            axes[1, 0].plot(history_dict[precision_key], label='Train Precision')
+            axes[1, 0].plot(history_dict[val_precision_key], label='Val Precision')
+            axes[1, 0].set_title('Model Precision')
+            axes[1, 0].set_xlabel('Epoch')
+            axes[1, 0].set_ylabel('Precision')
+            axes[1, 0].legend()
+            axes[1, 0].grid(True)
+        else:
+            axes[1, 0].axis('off')
+            axes[1, 0].text(0.5, 0.5, 'Precision metric not available', ha='center', va='center')
 
         # Recall
-        axes[1, 1].plot(self.history.history['recall'], label='Train Recall')
-        axes[1, 1].plot(self.history.history['val_recall'], label='Val Recall')
-        axes[1, 1].set_title('Model Recall')
-        axes[1, 1].set_xlabel('Epoch')
-        axes[1, 1].set_ylabel('Recall')
-        axes[1, 1].legend()
-        axes[1, 1].grid(True)
+        recall_key = next((k for k in history_dict if k.startswith('recall')), None)
+        val_recall_key = next((k for k in history_dict if k.startswith('val_recall')), None)
+        if recall_key and val_recall_key:
+            axes[1, 1].plot(history_dict[recall_key], label='Train Recall')
+            axes[1, 1].plot(history_dict[val_recall_key], label='Val Recall')
+            axes[1, 1].set_title('Model Recall')
+            axes[1, 1].set_xlabel('Epoch')
+            axes[1, 1].set_ylabel('Recall')
+            axes[1, 1].legend()
+            axes[1, 1].grid(True)
+        else:
+            axes[1, 1].axis('off')
+            axes[1, 1].text(0.5, 0.5, 'Recall metric not available', ha='center', va='center')
 
         plt.tight_layout()
         plt.savefig('training_history.png')
@@ -240,7 +253,7 @@ class FruitDetector:
         predicted_class = class_names[idx]
         confidence = predictions[0][idx] * 100
 
-        return predicted_class, confidence
+        return predicted_class, confidence, predictions[0]
 
     def save_model(self, filepath='fruit_detector_model.h5'):
         """Save the trained model"""
