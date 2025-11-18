@@ -142,6 +142,7 @@ class ArtificialBeeOptimizer:
     def _probabilities(self) -> List[float]:
         """Compute selection probabilities for onlooker bees."""
         min_fit = min(bee.fitness for bee in self.colony)
+        #Shift is added to ensure all fitnesses are positive because probabilities must be non-negative
         shift = -min_fit + 1e-6 if min_fit < 0 else 1e-6
         scores = [bee.fitness + shift for bee in self.colony]
         total = sum(scores)
