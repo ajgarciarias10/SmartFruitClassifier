@@ -17,7 +17,7 @@ class FruitDetector:
         self.history = None
 
     # Create data generators for training and validation datasets
-    def create_data_generators(self, TRAIN_DIR, BATCH_SIZE, VAL_DIR, augment_config=None):
+    def create_data_generators(self, TRAIN_DIR, BATCH_SIZE, VAL_DIR):
     
         # Training data augmentation
         #This part is used to make differences between images of the same class
@@ -30,11 +30,6 @@ class FruitDetector:
             'horizontal_flip': True,
             'fill_mode': 'nearest'
         }
-        if augment_config:
-            for key, value in augment_config.items():
-                if value is not None:
-                    default_aug[key] = value
-
         train_datagen = ImageDataGenerator(
             rescale=1. / 255,
             rotation_range=default_aug['rotation_range'],
@@ -233,6 +228,7 @@ class FruitDetector:
         print(f"Test Recall: {results[3]:.4f}")
 
         return results
+    
     def predict_image(self, image_path, class_names):
         """Predict a single image and return class name and confidence"""
         # Load and preprocess image
@@ -253,6 +249,21 @@ class FruitDetector:
         confidence = predictions[0][idx] * 100
 
         return predicted_class, confidence, predictions[0]
+    
+    
+    def create_test_generator(self, test_dir, batch_size):
+        datagen = ImageDataGenerator(rescale=1./255)  # sin augmentación
+        return datagen.flow_from_directory(
+            test_dir,
+            target_size=(self.img_size, self.img_size),
+            batch_size=batch_size,
+            class_mode='categorical',
+            shuffle=False
+        )
+
+    def evaluate_on_test(self, test_dir, batch_size):
+        test_gen = self.create_test_generator(test_dir, batch_size)
+        return self.evaluate(test_gen)
 
     def save_model(self, filepath='fruit_detector_model.h5'):
         """Save the trained model"""

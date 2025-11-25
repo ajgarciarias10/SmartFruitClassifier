@@ -30,8 +30,8 @@ class Bee:
 
 class ArtificialBeeOptimizer:
     """Artificial Bee Colony optimizer specialized for hyperparameter search."""
-
-    def __init__(self, colony_size: int = 6, max_trials: int = 4):
+#region Main functions of the ABC optimizer
+    def __init__(self, colony_size: int , max_trials: int ):
         if colony_size < 2:
             raise ValueError("colony_size must be at least 2.")
         self.colony_size = colony_size
@@ -194,64 +194,38 @@ class ArtificialBeeOptimizer:
 
         return self.best_bee
 
-
+#endregion
 DEFAULT_BASELINE_PARAMS: Params = {
     "learning_rate": 0.001,
     "batch_size": 32,
     "max_epochs": 13,
-
 }
-
-
 def run_optimizer_and_apply(
     train_dir: str,
     val_dir: str,
-    num_classes: int = 5,
-    img_size: int = 224,
-    colony_size: int = 3,
-    iterations: int = 2,
-    train_epochs_override: int = 4,
-    data_fraction: float = 0.15,
-    initial_params: Params = None,
+    num_classes: int ,
+    img_size: int,
+    colony_size: int,
+    iterations:int,
+    train_epochs_override:int,
+    max_trials: int,
+    data_fraction: float 
 ):
-    """
-    Runs the optimizer and applies the best hyperparameters found to the model.
 
-    Args:
-        train_dir: Directory with training data
-        val_dir: Directory with validation data
-        num_classes: Number of classes to classify
-        img_size: Input image size
-        colony_size: Number of food sources in the colony (controls runtime)
-        iterations: Number of optimizer iterations (controls runtime)
-        train_epochs_override: If set, cap the epochs during optimizer evaluations
-        data_fraction: Fraction of data to use during optimizer evaluations (0 < fraction <= 1)
-
-    Returns:
-        tuple: (trained detector, training history)
-    """
-
-    def fitness_function(params: Params) -> float:
+    def fitness_function(params: Params   ) -> float:
         detector = FruitDetector(img_size, num_classes)
 
-        augment_config = {
-            "rotation_range": params["rotation_range"],
-            "width_shift_range": params["shift_range"],
-            "height_shift_range": params["shift_range"],
-            "zoom_range": params["zoom_range"],
-            "shear_range": params["shear_range"],
-            "horizontal_flip": params["horizontal_flip"],
-        }
+        # Keep image augmentation fixed; only CNN hyperparameters are optimized.
         train_gen, val_gen = detector.create_data_generators(
             train_dir,
             int(params["batch_size"]),
-            val_dir,
-            augment_config=augment_config,
+            val_dir
         )
 
         detector.build_model(params["learning_rate"])
 
         effective_epochs = int(params["max_epochs"])
+
         if train_epochs_override is not None:
             effective_epochs = min(effective_epochs, int(train_epochs_override))
         effective_epochs = max(1, effective_epochs)
@@ -265,40 +239,26 @@ def run_optimizer_and_apply(
             )
             fitness = max(history.history.get("val_accuracy", [0.0]))
         finally:
+            #In case of any error, clear the session to avoid GPU memory leaks
             tf.keras.backend.clear_session()
-
-        print("\nProbando parámetros:")
-        for k, v in params.items():
-            print(f"  {k}: {v}")
-        print(f"  -> fitness (mejor val_accuracy): {fitness:.4f}")
-
+            
         return fitness
 
-    optimizer = ArtificialBeeOptimizer(colony_size=colony_size, max_trials=3)
-    seed_params = initial_params or DEFAULT_BASELINE_PARAMS
-    optimizer.initialize(fitness_function, initial_solutions=[seed_params])
+    optimizer = ArtificialBeeOptimizer(colony_size=colony_size, max_trials=max_trials)
+    seed_params =  DEFAULT_BASELINE_PARAMS
+
+    
+    optimizer.initialize(fitness_function
+        , initial_solutions=[seed_params])
     best_bee = optimizer.optimize(iterations=iterations)
 
-    print("\nBest hyperparameters found:")
-    for param, value in best_bee.parameters.items():
-        print(f"{param}: {value}")
-    print(f"Best validation accuracy: {best_bee.fitness:.4f}")
 
     detector = FruitDetector(img_size, num_classes)
-    augment_config = {
-        "rotation_range": best_bee.parameters.get("rotation_range", 0),
-        "width_shift_range": best_bee.parameters.get("shift_range", 0.0),
-        "height_shift_range": best_bee.parameters.get("shift_range", 0.0),
-        "zoom_range": best_bee.parameters.get("zoom_range", 0.0),
-        "shear_range": best_bee.parameters.get("shear_range", 0.0),
-        "horizontal_flip": bool(best_bee.parameters.get("horizontal_flip", False)),
-    }
 
     train_gen, val_gen = detector.create_data_generators(
         train_dir,
         int(best_bee.parameters.get("batch_size", 32)),
-        val_dir,
-        augment_config=augment_config,
+        val_dir
     )
 
     detector.build_model(best_bee.parameters.get("learning_rate", 1e-3))
@@ -314,7 +274,7 @@ def run_optimizer_and_apply(
 
     detector.plot_training_history()
 
-    return detector, history
+    return detector, history, best_bee.parameters
 
 
 if __name__ == "__main__":
@@ -323,6 +283,5 @@ if __name__ == "__main__":
     PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, os.pardir))
     TRAIN_DIR = os.path.join(PROJECT_ROOT, "dataset", "train", "Fruit")
     VAL_DIR = os.path.join(PROJECT_ROOT, "dataset", "val", "Fruit")
-
     # Run optimization and training
     detector, history = run_optimizer_and_apply(TRAIN_DIR, VAL_DIR)
