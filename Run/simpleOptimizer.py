@@ -13,11 +13,6 @@ PARAM_RANGES = {
     "learning_rate": (1e-5, 5e-3, "log"),      # Learning rate
     "batch_size": (16, 64, "int"),             # Batch size
     "max_epochs": (10, 40, "int"),             # Maximum epochs
-    "rotation_range": (0, 60, "float"),        # Data augmentation rotation
-    "shift_range": (0.0, 0.3, "float"),        # Width/height shift
-    "zoom_range": (0.0, 0.3, "float"),         # Zoom augmentation
-    "shear_range": (0.0, 0.3, "float"),        # Shear augmentation
-    "horizontal_flip": (0, 1, "bool"),         # Whether to use horizontal flip
 }
 
 Params = Dict[str, Union[int, float, bool]]
@@ -204,11 +199,7 @@ DEFAULT_BASELINE_PARAMS: Params = {
     "learning_rate": 0.001,
     "batch_size": 32,
     "max_epochs": 13,
-    "rotation_range": 40,
-    "shift_range": 0.2,
-    "zoom_range": 0.2,
-    "shear_range": 0.2,
-    "horizontal_flip": True,
+
 }
 
 
