@@ -23,7 +23,7 @@ class TransferLearningModel:
         self.history = None
         self.base_model = None
         
-    def build_model(self, learning_rate=0.001, dense_units=512, dropout_rate=0.5, freeze_base=True):
+    def build_model(self, learning_rate, dense_units, dropout_rate, freeze_base):
         """Build model with frozen base and custom top layers"""
         
         # Load pretrained base
@@ -99,7 +99,7 @@ class TransferLearningModel:
         
         return train_gen, val_gen
     
-    def train(self, train_gen, val_gen, epochs=30):
+    def train(self, train_gen, val_gen, epochs):
         """Train model"""
         
         # Setup callbacks

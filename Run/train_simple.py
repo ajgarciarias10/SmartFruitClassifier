@@ -9,7 +9,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT))
-
+from random_search import random_search
 from transfer_model import TransferLearningModel
 
 # Configuration
@@ -29,6 +29,9 @@ TRAIN_DIR = DATASET_ROOT / 'train' / 'Fruit'
 VAL_DIR = DATASET_ROOT / 'val' / 'Fruit'
 TEST_DIR = DATASET_ROOT / 'test' / 'Fruit'
 
+#Hyperammeters for random search
+N_TRIALS = 20 # Depending on the GPU
+
 
 def main():
     print("\n" + "="*60)
@@ -41,15 +44,25 @@ def main():
     print(f"  Dropout Rate: {DROPOUT_RATE}")
     print(f"  Epochs: {EPOCHS}")
     print("="*60 + "\n")
-    
+    random_search
+    best_hparams = random_search(
+        train_dir=TRAIN_DIR,
+        val_dir=VAL_DIR,
+        img_size=IMG_SIZE,
+        num_classes=NUM_CLASSES,
+        n_trials=N_TRIALS,     # puedes subir/bajar según recursos
+        epochs=EPOCHS,       # menos epochs en la búsqueda, más rápidos los trials
+        augmentation=True
+    )
     # Create model
     model = TransferLearningModel(img_size=IMG_SIZE, num_classes=NUM_CLASSES)
     
+    
     # Build with frozen base
     model.build_model(
-        learning_rate=LEARNING_RATE,
-        dense_units=DENSE_UNITS,
-        dropout_rate=DROPOUT_RATE,
+        learning_rate=best_hparams["learning_rate"],
+        dense_units=best_hparams["dense_units"],
+        dropout_rate=best_hparams["dropout_rate"],
         freeze_base=True  # Freeze EfficientNet base
     )
     
@@ -58,7 +71,7 @@ def main():
     train_gen, val_gen = model.create_data_generators(
         train_dir=str(TRAIN_DIR),
         val_dir=str(VAL_DIR),
-        batch_size=BATCH_SIZE,
+        batch_size=best_hparams["batch_size"],
         augmentation=True
     )
     
@@ -79,7 +92,7 @@ def main():
         test_gen = model.create_data_generators(
             train_dir=str(TEST_DIR),
             val_dir=str(TEST_DIR),
-            batch_size=BATCH_SIZE,
+            batch_size=best_hparams["batch_size"],
             augmentation=False
         )[0]
         
