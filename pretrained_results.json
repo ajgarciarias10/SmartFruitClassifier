@@ -1,0 +1,49 @@
+{
+  "overall_accuracy": 0.004,
+  "class_results": {
+    "Apple": {
+      "total": 315,
+      "correct": 0,
+      "predictions": {
+        "Unknown": 50
+      },
+      "accuracy": 0.0
+    },
+    "Banana": {
+      "total": 505,
+      "correct": 0,
+      "predictions": {
+        "Unknown": 48,
+        "Pomegranate": 1,
+        "Cucumber": 1
+      },
+      "accuracy": 0.0
+    },
+    "Cucumber": {
+      "total": 301,
+      "correct": 1,
+      "predictions": {
+        "Unknown": 49,
+        "Cucumber": 1
+      },
+      "accuracy": 0.02
+    },
+    "Grapefruit": {
+      "total": 200,
+      "correct": 0,
+      "predictions": {
+        "Unknown": 50
+      },
+      "accuracy": 0.0
+    },
+    "Pomegranate": {
+      "total": 200,
+      "correct": 0,
+      "predictions": {
+        "Unknown": 48,
+        "Apple": 2
+      },
+      "accuracy": 0.0
+    }
+  }
+}
