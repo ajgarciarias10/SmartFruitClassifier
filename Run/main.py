@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, os.pardir))
@@ -10,6 +11,7 @@ if PROJECT_ROOT not in sys.path:
 
 from FruitDetector import FruitDetector
 from simpleOptimizer import run_optimizer_and_apply
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from Utilities.DatasetManagement.utils import (
     validate_dataset_structure,
     print_dataset_summary,
@@ -55,11 +57,28 @@ print_dataset_summary(dataset_results)
 model_info = check_model_file(os.path.join(PROJECT_ROOT, 'final_fruit_model.h5'))
 print(f"\n {model_info['message']}")
 
-# Example prediction (uncomment to use)
-train_gen, _ = detector.create_data_generators(TRAIN_DIR, BATCH_SIZE, VAL_DIR)
-class_names = list(train_gen.class_indices.keys())
-predicted_fruit, confidence, probs = detector.predict_image(
-    'test_image.jpg',
-    class_names
+# Test evaluation on TEST_DIR
+print("\n" + "="*60)
+print("TESTING ON TEST DATASET")
+print("="*60)
+
+# Create test data generator
+test_datagen = ImageDataGenerator(rescale=1./255)
+test_generator = test_datagen.flow_from_directory(
+    TEST_DIR,
+    target_size=(IMG_SIZE, IMG_SIZE),
+    batch_size=BATCH_SIZE,
+    class_mode='categorical',
+    shuffle=False
 )
-print(f"\nPredicted: {predicted_fruit} (Confidence: {confidence:.2f}%)")
+
+# Evaluate model on test set
+print("\nEvaluating model on test dataset...")
+test_results = detector.evaluate(test_generator)
+
+# Save the model after test evaluation
+test_model_filename = f"fruit_model_test_acc{test_results[1]:.4f}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.h5"
+test_model_path = os.path.join(PROJECT_ROOT, test_model_filename)
+detector.save_model(test_model_path)
+print(f"\n✓ Test model saved to: {test_model_filename}")
+
