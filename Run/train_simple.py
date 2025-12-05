@@ -52,7 +52,8 @@ def main():
         num_classes=NUM_CLASSES,
         n_trials=N_TRIALS,     # puedes subir/bajar según recursos
         epochs=EPOCHS,       # menos epochs en la búsqueda, más rápidos los trials
-        augmentation=True
+        augmentation=True,
+        output_dir=PROJECT_ROOT
     )
     # Create model
     model = TransferLearningModel(img_size=IMG_SIZE, num_classes=NUM_CLASSES)
@@ -63,7 +64,8 @@ def main():
         learning_rate=best_hparams["learning_rate"],
         dense_units=best_hparams["dense_units"],
         dropout_rate=best_hparams["dropout_rate"],
-        freeze_base=True  # Freeze EfficientNet base
+        freeze_base=True,  # Freeze EfficientNet base
+        l2_reg=best_hparams.get("l2_reg", 1e-4)
     )
     
     # Create data generators
