@@ -42,6 +42,11 @@ detector, history = run_optimizer_and_apply(
 )
 print("Optimizing completed. Using the best hyperparameters found.")
 
+# Save the best model (callbacks restore best weights during training)
+best_model_path = os.path.join(PROJECT_ROOT, 'best_fruit_model.keras')
+detector.save_model(best_model_path)
+print(f"Best model saved to: {best_model_path}")
+
 # Plot results
 detector.plot_training_history()
 
@@ -54,7 +59,7 @@ dataset_results = validate_dataset_structure(DATASET_ROOT)
 print_dataset_summary(dataset_results)
 
 # Check saved model
-model_info = check_model_file(os.path.join(PROJECT_ROOT, 'final_fruit_model.h5'))
+model_info = check_model_file(best_model_path)
 print(f"\n {model_info['message']}")
 
 # Test evaluation on TEST_DIR
@@ -80,5 +85,4 @@ test_results = detector.evaluate(test_generator)
 test_model_filename = f"fruit_model_test_acc{test_results[1]:.4f}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.h5"
 test_model_path = os.path.join(PROJECT_ROOT, test_model_filename)
 detector.save_model(test_model_path)
-print(f"\n✓ Test model saved to: {test_model_filename}")
-
+print(f"\nTest model saved to: {test_model_filename}")
