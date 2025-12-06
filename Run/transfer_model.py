@@ -23,8 +23,17 @@ class TransferLearningModel:
         self.history = None
         self.base_model = None
         
-    def build_model(self, learning_rate, dense_units, dropout_rate, freeze_base):
-        """Build model with frozen base and custom top layers"""
+    def build_model(self, learning_rate, dense_units, dropout_rate, freeze_base, l2_reg=0.0, label_smoothing=0.0):
+        """Build model with frozen base and custom top layers
+
+        Args:
+            learning_rate: optimizer learning rate
+            dense_units: units in the top dense layer
+            dropout_rate: dropout rate applied to top layers
+            freeze_base: whether to freeze the EfficientNet base
+            l2_reg: L2 weight decay applied to Dense layers (float)
+            label_smoothing: label smoothing factor for categorical loss
+        """
         
         # Load pretrained base
         self.base_model = EfficientNetB0(
@@ -42,16 +51,22 @@ class TransferLearningModel:
         x = keras.applications.efficientnet.preprocess_input(inputs)
         x = self.base_model(x, training=False)
         x = layers.Dropout(dropout_rate)(x)
-        x = layers.Dense(dense_units, activation='relu')(x)
+        if l2_reg and l2_reg > 0.0:
+            reg = tf.keras.regularizers.l2(l2_reg)
+        else:
+            reg = None
+
+        x = layers.Dense(dense_units, activation='relu', kernel_regularizer=reg)(x)
         x = layers.Dropout(dropout_rate * 0.6)(x)
-        outputs = layers.Dense(self.num_classes, activation='softmax')(x)
+        outputs = layers.Dense(self.num_classes, activation='softmax', kernel_regularizer=reg)(x)
         
         self.model = keras.Model(inputs, outputs)
         
         # Compile
+        loss_fn = tf.keras.losses.CategoricalCrossentropy(label_smoothing=label_smoothing)
         self.model.compile(
             optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
-            loss='categorical_crossentropy',
+            loss=loss_fn,
             metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()]
         )
         
@@ -99,7 +114,7 @@ class TransferLearningModel:
         
         return train_gen, val_gen
     
-    def train(self, train_gen, val_gen, epochs):
+    def train(self, train_gen, val_gen, epochs, class_weight=None):
         """Train model"""
         
         # Setup callbacks
@@ -117,13 +132,17 @@ class TransferLearningModel:
         print(f"Training: {epochs} epochs, {len(train_gen)} steps/epoch")
         print(f"{'='*60}\n")
         
-        self.history = self.model.fit(
-            train_gen,
+        fit_kwargs = dict(
+            x=train_gen,
             validation_data=val_gen,
             epochs=epochs,
             callbacks=callbacks,
             verbose=1
         )
+        if class_weight is not None:
+            fit_kwargs['class_weight'] = class_weight
+
+        self.history = self.model.fit(**fit_kwargs)
         
         return self.history
     
