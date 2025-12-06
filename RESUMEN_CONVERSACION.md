@@ -1,11 +1,166 @@
-# Resumen de Conversación - SmartFruitClassifier
+# Resumen de la Conversación - Cambios Implementados
 **Fecha:** 6 de diciembre de 2025
 
-## Problema Inicial
-- Usuario reportó que la web app mostraba predicciones incorrectas (manzana → "Banana 69%")
-- Las matrices de confusión offline mostraban buenos resultados, pero la web app no coincidía
+## 🎯 Objetivo Principal
+**Mejorar el clasificador de frutas implementando Random Search para optimización de hiperparámetros**
 
-## Soluciones Implementadas
+---
+
+## 📋 Cambios Implementados
+
+### 1. **Implementación de Random Search en `train_simple.py`**
+
+**Antes:**
+- Entrenamiento con hiperparámetros fijos
+- Sin exploración del espacio de hiperparámetros
+- Un solo modelo generado
+
+**Después:**
+```python
+python Run\train_simple.py --trials 15 --epochs 12
+```
+- **Random Search completo** que prueba múltiples combinaciones
+- **Samplers inteligentes:**
+  - Learning Rate: log-uniform [1e-5, 1e-3]
+  - Batch size: [16, 32, 64]
+  - Dense units: [128, 256, 512]
+  - Dropout: uniform [0.1, 0.6]
+  - L2 regularization: log-uniform [1e-6, 1e-3]
+  - Label smoothing: uniform [0.0, 0.1]
+
+### 2. **Balance de Clases (CLASS WEIGHTS)**
+
+**Problema identificado:**
+- Dataset desbalanceado: Apple (3,293) vs Pomegranate (1,600)
+- Modelo colapsaba prediciendo solo "Apple" (~95% del tiempo)
+
+**Solución implementada:**
+```python
+def compute_class_weights(gen):
+    # Calcula pesos inversamente proporcionales a frecuencia
+    weights = {i: total / (num_classes * class_count[i])}
+    return weights
+```
+
+**Resultado:**
+```
+Class weights:
+  Apple: 0.777        ← Mayoría, peso menor
+  Banana: 0.804
+  Cucumber: 0.820
+  Grapefruit: 1.599   ← Minoría, peso MAYOR
+  Pomegranate: 1.599  ← Minoría, peso MAYOR
+```
+
+### 3. **Selección del Mejor Modelo**
+
+**Antes:**
+- Guardaba el último modelo entrenado (no necesariamente el mejor)
+
+**Después:**
+```python
+# Guarda TODOS los trials
+trial_{i}_valacc_{accuracy}.keras
+
+# Copia el MEJOR (máxima val_accuracy) a:
+models/efficientnet-b0/best_model.keras
+```
+
+### 4. **Evaluación en TEST_DIR**
+
+**Agregado:**
+- Evaluación automática del mejor modelo en test set
+- Generación de métricas en JSON:
+  - test_accuracy
+  - test_loss
+  - test_precision
+  - test_recall
+
+### 5. **Configuración GPU + CPU**
+
+**Problema:**
+- TensorFlow no usaba la GPU NVIDIA RTX 2060
+
+**Solución:**
+```python
+# Configuración automática en train_simple.py
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
+```
+
+### 6. **Visibilidad y Debugging**
+
+**Agregado:**
+- Print de class weights antes de entrenar
+- Resumen de top 5 trials
+- Indicadores de progreso claros
+- Scripts de verificación:
+  - `verify_model_fixed.py` - Verifica no colapso
+  - `configure_gpu.py` - Verifica GPU/CPU
+  - `check_tensorflow.py` - Diagnóstico TensorFlow
+
+---
+
+## 🔧 Archivos Modificados
+
+### `Run/train_simple.py` ⭐ (PRINCIPAL)
+- ✅ Random Search loop completo
+- ✅ Cálculo de class_weight por trial
+- ✅ Selección del mejor modelo (max val_accuracy)
+- ✅ Evaluación en TEST_DIR
+- ✅ Configuración GPU/CPU automática
+- ✅ Print de class weights para debugging
+
+### `Run/web_app/app.py`
+- ✅ Paths corregidos para cargar modelos
+- ✅ Carga robusta de class_map (JSON → generator → folders)
+
+### Nuevos scripts creados:
+- `verify_model_fixed.py` - Verificación de no colapso
+- `configure_gpu.py` - Setup GPU/CPU
+- `check_tensorflow.py` - Diagnóstico
+
+---
+
+## 📊 Resultados Esperados
+
+**Antes del fix:**
+- Modelo predecía solo "Apple" (~95%)
+- Val accuracy: ???
+- Test accuracy: No evaluado
+
+**Después del fix (en progreso):**
+- Random Search explora espacio de hiperparámetros
+- Class weights fuerzan aprendizaje de todas las frutas
+- Mejor modelo seleccionado automáticamente
+- Evaluación completa en test set
+- **Target:** >80% accuracy en TODAS las clases
+
+---
+
+## 🚀 Comando Final
+
+```powershell
+# Entrenamiento optimizado con Random Search
+python Run\train_simple.py --trials 10 --epochs 12
+
+# Verificación post-entrenamiento
+python Run\verify_model_fixed.py
+```
+
+---
+
+## ⏳ Estado Actual
+
+**EN PROGRESO:** Entrenamiento con configuración corregida (1 trial × 5 épocas) para verificar que el modelo aprende TODAS las frutas correctamente.
+
+**Verificación pendiente:** Una vez termine el entrenamiento, ejecutar `verify_model_fixed.py` para confirmar que el modelo NO está colapsado y detecta todas las frutas con distribución equilibrada de predicciones.
+
+---
+
+## 🔍 Problema Anterior Resuelto
 
 ### 1. Diagnóstico y Corrección de Rutas
 **Problema:** El modelo estaba en `Run/test_results/best_model.keras` pero la app buscaba en `test_results/`

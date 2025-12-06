@@ -12,12 +12,27 @@ import random
 import math
 from pathlib import Path
 import numpy as np
+import tensorflow as tf
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from transfer_model import TransferLearningModel
+
+# Configure TensorFlow to use GPU + CPU
+gpus = tf.config.list_physical_devices('GPU')
+cpus = tf.config.list_physical_devices('CPU')
+
+if gpus:
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
+    print(f"✓ TensorFlow configured for GPU + CPU")
+    print(f"  GPUs: {len(gpus)} - {[gpu.name for gpu in gpus]}")
+    print(f"  CPUs: {len(cpus)}\n")
+else:
+    print(f"⚠ No GPU detected, using CPU only")
+    print(f"  CPUs: {len(cpus)}\n")
 
 # Configuration
 IMG_SIZE = 224
@@ -99,7 +114,7 @@ def main(trials=DEFAULT_TRIALS, epochs=DEFAULT_EPOCHS):
             learning_rate=lr,
             dense_units=dense_units,
             dropout_rate=dropout,
-            freeze_base=True,
+            freeze_base=True,  
             l2_reg=l2_reg,
             label_smoothing=label_smoothing
         )
@@ -120,15 +135,21 @@ def main(trials=DEFAULT_TRIALS, epochs=DEFAULT_EPOCHS):
         # Compute class weights
         class_weight = compute_class_weights(train_gen)
         
-        # Train
+        print("Class weights:")
+        for cls_name, cls_idx in sorted(train_gen.class_indices.items(), key=lambda x: x[1]):
+            weight = class_weight.get(cls_idx, 1.0)
+            print(f"  {cls_name}: {weight:.3f}")
+        print()
+        
+        # Train (class_weight is CRITICAL to prevent model collapse)
         history = model.train(train_gen, val_gen, epochs=epochs, class_weight=class_weight)
         
         # Get best validation accuracy
         val_accs = history.history.get('val_accuracy', [])
         trial_best_val_acc = max(val_accs) if val_accs else 0.0
         
-        # Save model for this trial
-        model_name = f"trial_{trial_num}_valacc_{trial_best_val_acc:.4f}.keras"
+        # Save model for this trial (keep all for comparison)
+        model_name = f"trial_{trial_num:03d}_valacc_{trial_best_val_acc:.4f}.keras"
         model_path = TEST_RESULTS_DIR / model_name
         model.save_model(str(model_path))
         
@@ -152,21 +173,31 @@ def main(trials=DEFAULT_TRIALS, epochs=DEFAULT_EPOCHS):
         if trial_best_val_acc > best_val_acc:
             best_val_acc = trial_best_val_acc
             best_model_path = model_path
-            try:
-                import shutil
-                shutil.copyfile(model_path, TEST_RESULTS_DIR / 'best_model.keras')
-                print(f"\n✓ New best model! Val accuracy: {trial_best_val_acc:.4f}")
-            except Exception as e:
-                print(f"Warning: Could not copy best model: {e}")
+            print(f"\n✓ New best model! Val accuracy: {trial_best_val_acc:.4f}")
         
         # Save partial results
         with open(TEST_RESULTS_DIR / 'random_search_results.json', 'w', encoding='utf-8') as f:
             json.dump({
                 'results': results,
                 'best_val_accuracy': best_val_acc,
-                'best_model': str(best_model_path),
+                'best_model_path': str(best_model_path),
                 'trials_completed': trial_num
             }, f, indent=2)
+    
+    # IMPORTANT: Copy the TRUE best model to models/efficientnet-b0/best_model.keras
+    if best_model_path and Path(best_model_path).exists():
+        print(f"\n{'='*70}")
+        print("COPYING BEST MODEL TO FINAL LOCATION")
+        print(f"{'='*70}")
+        print(f"Best model: {best_model_path}")
+        print(f"Val accuracy: {best_val_acc:.4f}\n")
+        
+        import shutil
+        final_model_path = PROJECT_ROOT / 'models' / 'efficientnet-b0' / 'best_model.keras'
+        final_model_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        shutil.copyfile(best_model_path, final_model_path)
+        print(f"✓ Copied to: {final_model_path}\n")
     
     # Final summary
     print(f"\n{'='*70}")
@@ -187,24 +218,28 @@ def main(trials=DEFAULT_TRIALS, epochs=DEFAULT_EPOCHS):
               f"Dense={params['dense_units']}, Dropout={params['dropout']:.3f}")
     
     # Evaluate best model on TEST_DIR
-    if TEST_DIR.exists():
+    if TEST_DIR.exists() and best_model_path:
         print(f"\n{'='*70}")
         print("EVALUATING BEST MODEL ON TEST SET")
         print(f"{'='*70}\n")
         
-        best_model = TransferLearningModel(img_size=IMG_SIZE, num_classes=NUM_CLASSES)
-        from tensorflow.keras.models import load_model
-        best_model.model = load_model(TEST_RESULTS_DIR / 'best_model.keras')
+        # Load best model directly using keras
+        import tensorflow as tf
+        loaded_model = tf.keras.models.load_model(str(best_model_path))
         
-        test_gen, _ = best_model.create_data_generators(
-            train_dir=str(TEST_DIR),
-            val_dir=str(TEST_DIR),
+        # Create test generator
+        from tensorflow.keras.preprocessing.image import ImageDataGenerator
+        test_datagen = ImageDataGenerator(rescale=1./255)
+        test_gen = test_datagen.flow_from_directory(
+            str(TEST_DIR),
+            target_size=(IMG_SIZE, IMG_SIZE),
             batch_size=32,
-            augmentation=False
+            class_mode='categorical',
+            shuffle=False
         )
         
         print(f"Test samples: {test_gen.samples}\n")
-        test_results = best_model.evaluate(test_gen)
+        test_results = loaded_model.evaluate(test_gen, verbose=1)
         
         # Save test results to JSON
         test_metrics = {
@@ -212,7 +247,7 @@ def main(trials=DEFAULT_TRIALS, epochs=DEFAULT_EPOCHS):
             'test_accuracy': float(test_results[1]),
             'test_precision': float(test_results[2]),
             'test_recall': float(test_results[3]),
-            'best_model_path': str(TEST_RESULTS_DIR / 'best_model.keras'),
+            'best_model_path': str(best_model_path),
             'best_val_accuracy': best_val_acc
         }
         with open(TEST_RESULTS_DIR / 'test_evaluation_results.json', 'w', encoding='utf-8') as f:
