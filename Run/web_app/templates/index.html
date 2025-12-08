@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Fruit Classifier - Live</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    video { border: 1px solid #ccc; }
+    #result { margin-top: 10px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Live Fruit Classifier</h1>
+  <video id="video" width="320" height="240" autoplay></video>
+  <canvas id="canvas" width="224" height="224" style="display:none"></canvas>
+  <div>
+    <button id="snap">Classify frame</button>
+    <span style="margin-left:16px"></span>
+    <input type="file" id="fileInput" accept="image/*">
+    <button id="uploadBtn">Upload & Classify</button>
+    <p id="result">Waiting for prediction...</p>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const result = document.getElementById('result');
+
+    // Access camera
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+      video.srcObject = stream;
+      video.play();
+    }).catch(err => {
+      console.error('Camera error:', err);
+      result.textContent = 'Camera error: ' + err.message;
+    });
+
+    document.getElementById('snap').addEventListener('click', async () => {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg');
+
+      result.textContent = 'Sending image...';
+      try {
+        const resp = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl })
+        });
+        if (!resp.ok) {
+          const e = await resp.json();
+          result.textContent = 'Error: ' + (e.error || resp.statusText);
+          return;
+        }
+        const j = await resp.json();
+        // Show only the human-readable class name and confidence
+        result.textContent = `${j.class_name} - Confidence: ${(j.confidence*100).toFixed(1)}%`;
+      } catch (err) {
+        console.error(err);
+        result.textContent = 'Request failed: ' + err.message;
+      }
+    });
+
+    // Upload file input and send as multipart/form-data
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+      const fileInput = document.getElementById('fileInput');
+      if (!fileInput.files || fileInput.files.length === 0) {
+        result.textContent = 'No file selected';
+        return;
+      }
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append('file', file, file.name);
+
+      result.textContent = 'Uploading image...';
+      try {
+        const resp = await fetch('/predict', {
+          method: 'POST',
+          body: formData
+        });
+        if (!resp.ok) {
+          const e = await resp.json();
+          result.textContent = 'Error: ' + (e.error || resp.statusText);
+          return;
+        }
+        const j = await resp.json();
+        result.textContent = `${j.class_name} - Confidence: ${(j.confidence*100).toFixed(1)}%`;
+      } catch (err) {
+        console.error(err);
+        result.textContent = 'Upload failed: ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>
