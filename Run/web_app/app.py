@@ -18,12 +18,14 @@ from PIL import Image
 import numpy as np
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess
 import json
 
 # Paths
 APP_DIR = Path(__file__).resolve().parent
 RUN_DIR = APP_DIR.parent
 PROJECT_ROOT = RUN_DIR.parent
+MODELS_DIR = PROJECT_ROOT / 'models' / 'efficientnet-b0'
 TEST_RESULTS_DIR = RUN_DIR / 'test_results'
 TEST_DIR = PROJECT_ROOT / 'dataset' / 'test' / 'Fruit'
 
@@ -37,10 +39,14 @@ CORS(app)
 
 
 def find_model_path():
-    # Prefer explicit best model file
-    best = TEST_RESULTS_DIR / DEFAULT_MODEL_NAME
+    # First check models/efficientnet-b0/best_model.keras
+    best = MODELS_DIR / 'best_model.keras'
     if best.exists():
         return str(best)
+    # Then check test_results
+    best_test = TEST_RESULTS_DIR / DEFAULT_MODEL_NAME
+    if best_test.exists():
+        return str(best_test)
     # Fallback: newest .keras or .h5
     if not TEST_RESULTS_DIR.exists():
         return None
@@ -72,7 +78,7 @@ def load_class_names_from_generator():
     # Build a generator to get class_indices (exact mapping used by flow_from_directory)
     if not TEST_DIR.exists():
         return None
-    datagen = ImageDataGenerator(rescale=1.0 / 255.0)
+    datagen = ImageDataGenerator()  # No rescale for EfficientNet
     gen = datagen.flow_from_directory(
         str(TEST_DIR),
         target_size=(IMG_SIZE, IMG_SIZE),
@@ -124,8 +130,9 @@ print('Class names (index order):', CLASS_NAMES)
 
 def preprocess_image(pil_img: Image.Image):
     img = pil_img.convert('RGB').resize((IMG_SIZE, IMG_SIZE))
-    arr = np.array(img).astype('float32') / 255.0
+    arr = np.array(img).astype('float32')
     arr = np.expand_dims(arr, axis=0)
+    arr = efficientnet_preprocess(arr)  # EfficientNet preprocessing
     return arr
 
 

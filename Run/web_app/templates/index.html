@@ -4,28 +4,60 @@
   <meta charset="utf-8">
   <title>Fruit Classifier - Live</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    video { border: 1px solid #ccc; }
-    #result { margin-top: 10px; font-weight: bold; }
+    body { font-family: Arial, sans-serif; margin: 20px; max-width: 1200px; }
+    .container { display: flex; gap: 30px; flex-wrap: wrap; }
+    .section { flex: 1; min-width: 300px; }
+    .section h2 { color: #333; border-bottom: 2px solid #4CAF50; padding-bottom: 5px; }
+    video { border: 2px solid #ccc; border-radius: 4px; display: block; }
+    #preview { max-width: 400px; max-height: 300px; border: 2px solid #ccc; border-radius: 4px; display: none; }
+    button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin: 5px 0; }
+    button:hover { background: #45a049; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #result { margin-top: 15px; padding: 15px; background: #f0f0f0; border-radius: 4px; font-weight: bold; font-size: 18px; color: #333; }
+    .success { background: #d4edda !important; color: #155724 !important; }
+    .error { background: #f8d7da !important; color: #721c24 !important; }
+    input[type="file"] { margin: 10px 0; }
+    canvas { display: none; }
   </style>
 </head>
 <body>
-  <h1>Live Fruit Classifier</h1>
-  <video id="video" width="320" height="240" autoplay></video>
-  <canvas id="canvas" width="224" height="224" style="display:none"></canvas>
-  <div>
-    <button id="snap">Classify frame</button>
-    <span style="margin-left:16px"></span>
-    <input type="file" id="fileInput" accept="image/*">
-    <button id="uploadBtn">Upload & Classify</button>
-    <p id="result">Waiting for prediction...</p>
+  <h1>🍎 Live Fruit Classifier</h1>
+  
+  <div class="container">
+    <!-- Webcam Section -->
+    <div class="section">
+      <h2>📹 Webcam Classification</h2>
+      <video id="video" width="400" height="300" autoplay></video>
+      <canvas id="canvas" width="224" height="224"></canvas>
+      <div>
+        <button id="snap">📸 Classify Webcam Frame</button>
+        <p style="color: #666; font-size: 12px; margin-top: 5px;">
+          ⚠️ Classifies the current webcam frame
+        </p>
+      </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="section">
+      <h2>📤 Upload Image</h2>
+      <input type="file" id="fileInput" accept="image/*">
+      <button id="uploadBtn">🔍 Upload & Classify</button>
+      <img id="preview" alt="Preview">
+      <p style="color: #666; font-size: 12px; margin-top: 5px;">
+        ✅ Classifies the uploaded image
+      </p>
+    </div>
   </div>
+
+  <div id="result">Waiting for prediction...</div>
 
   <script>
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const result = document.getElementById('result');
+    const preview = document.getElementById('preview');
+    const fileInput = document.getElementById('fileInput');
 
     // Access camera
     navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
@@ -33,14 +65,31 @@
       video.play();
     }).catch(err => {
       console.error('Camera error:', err);
-      result.textContent = 'Camera error: ' + err.message;
+      result.textContent = '⚠️ Camera not available: ' + err.message;
+      result.className = 'error';
+    });
+
+    // Show preview when file is selected
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+          result.textContent = 'Image loaded. Click "Upload & Classify" to classify.';
+          result.className = '';
+        };
+        reader.readAsDataURL(file);
+      }
     });
 
     document.getElementById('snap').addEventListener('click', async () => {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL('image/jpeg');
 
-      result.textContent = 'Sending image...';
+      result.textContent = '⏳ Classifying webcam frame...';
+      result.className = '';
       try {
         const resp = await fetch('/predict', {
           method: 'POST',
@@ -49,30 +98,33 @@
         });
         if (!resp.ok) {
           const e = await resp.json();
-          result.textContent = 'Error: ' + (e.error || resp.statusText);
+          result.textContent = '❌ Error: ' + (e.error || resp.statusText);
+          result.className = 'error';
           return;
         }
         const j = await resp.json();
-        // Show only the human-readable class name and confidence
-        result.textContent = `${j.class_name} - Confidence: ${(j.confidence*100).toFixed(1)}%`;
+        result.textContent = `📹 Webcam: ${j.class_name} - Confidence: ${(j.confidence*100).toFixed(1)}%`;
+        result.className = 'success';
       } catch (err) {
         console.error(err);
-        result.textContent = 'Request failed: ' + err.message;
+        result.textContent = '❌ Request failed: ' + err.message;
+        result.className = 'error';
       }
     });
 
     // Upload file input and send as multipart/form-data
     document.getElementById('uploadBtn').addEventListener('click', async () => {
-      const fileInput = document.getElementById('fileInput');
       if (!fileInput.files || fileInput.files.length === 0) {
-        result.textContent = 'No file selected';
+        result.textContent = '⚠️ Please select an image first';
+        result.className = 'error';
         return;
       }
       const file = fileInput.files[0];
       const formData = new FormData();
       formData.append('file', file, file.name);
 
-      result.textContent = 'Uploading image...';
+      result.textContent = '⏳ Classifying uploaded image...';
+      result.className = '';
       try {
         const resp = await fetch('/predict', {
           method: 'POST',
@@ -80,14 +132,17 @@
         });
         if (!resp.ok) {
           const e = await resp.json();
-          result.textContent = 'Error: ' + (e.error || resp.statusText);
+          result.textContent = '❌ Error: ' + (e.error || resp.statusText);
+          result.className = 'error';
           return;
         }
         const j = await resp.json();
-        result.textContent = `${j.class_name} - Confidence: ${(j.confidence*100).toFixed(1)}%`;
+        result.textContent = `✅ ${j.class_name} - Confidence: ${(j.confidence*100).toFixed(1)}%`;
+        result.className = 'success';
       } catch (err) {
         console.error(err);
-        result.textContent = 'Upload failed: ' + err.message;
+        result.textContent = '❌ Upload failed: ' + err.message;
+        result.className = 'error';
       }
     });
   </script>

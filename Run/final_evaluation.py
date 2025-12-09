@@ -42,7 +42,7 @@ print()
 
 # Load test dataset
 print("Loading test dataset...")
-datagen = ImageDataGenerator(rescale=1./255)
+datagen = ImageDataGenerator()  # NO rescale - EfficientNet has preprocessing built-in
 test_gen = datagen.flow_from_directory(
     str(TEST_DIR),
     target_size=(IMG_SIZE, IMG_SIZE),
@@ -108,9 +108,12 @@ for model_name, model_path in models:
     pred_unique, pred_counts = np.unique(predicted_classes, return_counts=True)
     max_ratio = max(pred_counts) / len(predicted_classes)
     
+    # Create a dictionary for pred_counts by class index
+    pred_count_dict = dict(zip(pred_unique, pred_counts))
+    
     print(f"\nPrediction Distribution:")
     for cls_idx in range(NUM_CLASSES):
-        count = pred_counts[cls_idx] if cls_idx in pred_unique else 0
+        count = pred_count_dict.get(cls_idx, 0)
         pct = 100.0 * count / len(predicted_classes)
         print(f"  {class_names[cls_idx]:15}: {count:4d} predictions ({pct:5.1f}%)")
     
