@@ -43,7 +43,7 @@ if not models:
     print("ERROR: No models found")
     sys.exit(1)
 
-print("Models to evaluate:")
+print("Models to compare:")
 for name, path in models:
     print(f"  • {name}: {Path(path).name}")
 print()
@@ -72,8 +72,13 @@ for model_name, model_path in models:
     print(f"EVALUATING: {model_name}")
     print("="*80 + "\n")
     
-    model = tf.keras.models.load_model(model_path)
-    print(f"✓ Model loaded\n")
+    try:
+        model = tf.keras.models.load_model(model_path, compile=False)
+        print(f"✓ Model loaded\n")
+    except Exception as e:
+        print(f"❌ ERROR loading model: {e}")
+        print(f"Skipping {model_name}\n")
+        continue
     
     # Predict
     test_gen.reset()
@@ -154,8 +159,27 @@ for model_name, model_path in models:
     
     print("\n")
 
+# Final Summary
+if not results:
+    print("="*80)
+    print("ERROR: No models could be evaluated")
+    print("="*80)
+    sys.exit(1)
+
+if len(results) == 1:
+    print("="*80)
+    print("SINGLE MODEL EVALUATION COMPLETE")
+    print("="*80 + "\n")
+    model_name = list(results.keys())[0]
+    r = results[model_name]
+    print(f"Model: {model_name}")
+    print(f"Accuracy: {r['accuracy']:.4f} ({r['accuracy']*100:.2f}%)")
+    print(f"Avg Confidence: {r['confidence']:.4f}")
+    print(f"Status: {'⚠ COLLAPSED' if r['collapsed'] else '✓ OK'}")
+    print(f"\n{'='*80}\n")
+
 # Comparison
-if len(results) == 2:
+elif len(results) == 2:
     print("="*80)
     print("COMPARISON")
     print("="*80 + "\n")
