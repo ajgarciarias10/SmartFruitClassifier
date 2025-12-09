@@ -7,7 +7,9 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
@@ -23,13 +25,19 @@ print("="*80 + "\n")
 
 # Models to compare
 keras_model_path = PROJECT_ROOT / 'models' / 'efficientnet-b0' / 'best_model.keras'
-h5_model_path = PROJECT_ROOT / 'fruit_classifier_apple_banana_avocado.h5'
+
+# Search for .h5 models in models directory (including subdirectories)
+models_dir = PROJECT_ROOT / 'models'
+h5_models = list(models_dir.glob('**/*.h5'))
 
 models = []
 if keras_model_path.exists():
     models.append(('Transfer Learning (.keras)', str(keras_model_path)))
-if h5_model_path.exists():
-    models.append(('Previous Model (.h5)', str(h5_model_path)))
+
+# Add the first .h5 model found
+if h5_models:
+    h5_model_path = h5_models[0]
+    models.append((f'Previous Model ({h5_model_path.name})', str(h5_model_path)))
 
 if not models:
     print("ERROR: No models found")
@@ -91,7 +99,7 @@ for model_name, model_path in models:
         class_acc = correct / total if total > 0 else 0
         print(f"  {class_name:15}: {correct:4d}/{total:4d} = {class_acc:.4f} ({class_acc*100:.1f}%)")
     
-    # Confusion Matrix
+    # Confusion Matrix (text)
     print(f"\nConfusion Matrix:")
     print(f"{'':15}", end="")
     for name in class_names:
@@ -103,6 +111,21 @@ for model_name, model_path in models:
         for j in range(NUM_CLASSES):
             print(f"{cm[i][j]:>10}", end=" ")
         print()
+    
+    # Confusion Matrix (graphical)
+    plt.figure(figsize=(10, 8))
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)
+    disp.plot(cmap='Blues', values_format='d', ax=plt.gca())
+    plt.title(f'Confusion Matrix - {model_name}', fontsize=14, fontweight='bold')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    
+    # Save figure
+    safe_name = model_name.replace(' ', '_').replace('(', '').replace(')', '').replace('.', '_')
+    cm_path = BASE_DIR / f'confusion_matrix_{safe_name}.png'
+    plt.savefig(cm_path, dpi=150, bbox_inches='tight')
+    print(f"\n✓ Confusion matrix saved: {cm_path.name}")
+    plt.close()
     
     # Check collapse
     pred_unique, pred_counts = np.unique(predicted_classes, return_counts=True)
@@ -161,5 +184,28 @@ if len(results) == 2:
         print(f"   Accuracy improved by {-acc_diff*100:.2f}%")
     else:
         print("🤝 TIE")
+    
+    # Comparison visualization
+    print(f"\nGenerating comparison visualization...")
+    
+    fig, axes = plt.subplots(1, 2, figsize=(18, 7))
+    
+    # First model confusion matrix
+    disp1 = ConfusionMatrixDisplay(confusion_matrix=r1['confusion_matrix'], display_labels=class_names)
+    disp1.plot(cmap='Blues', values_format='d', ax=axes[0])
+    axes[0].set_title(f'{names[0]}\nAccuracy: {r1["accuracy"]:.4f}', fontsize=12, fontweight='bold')
+    axes[0].tick_params(axis='x', rotation=45)
+    
+    # Second model confusion matrix
+    disp2 = ConfusionMatrixDisplay(confusion_matrix=r2['confusion_matrix'], display_labels=class_names)
+    disp2.plot(cmap='Oranges', values_format='d', ax=axes[1])
+    axes[1].set_title(f'{names[1]}\nAccuracy: {r2["accuracy"]:.4f}', fontsize=12, fontweight='bold')
+    axes[1].tick_params(axis='x', rotation=45)
+    
+    plt.tight_layout()
+    comparison_path = BASE_DIR / 'confusion_matrix_comparison.png'
+    plt.savefig(comparison_path, dpi=150, bbox_inches='tight')
+    print(f"✓ Comparison saved: {comparison_path.name}")
+    plt.show()
 
 print(f"\n{'='*80}\n")
