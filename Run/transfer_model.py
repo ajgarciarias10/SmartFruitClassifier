@@ -184,9 +184,15 @@ class TransferLearningModel:
         
         plt.tight_layout()
         
-        if save_path:
-            plt.savefig(save_path, dpi=300)
-            print(f"✓ Plot saved: {save_path}")
+        # Auto-save if no path provided
+        if save_path is None:
+            project_root = Path(__file__).resolve().parents[1]
+            plots_dir = project_root / 'results' / 'plot'
+            plots_dir.mkdir(parents=True, exist_ok=True)
+            save_path = plots_dir / 'training_history.png'
+        
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"✓ Training plot saved: {save_path}")
         
         plt.show()
     

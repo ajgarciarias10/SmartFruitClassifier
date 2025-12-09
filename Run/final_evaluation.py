@@ -120,11 +120,13 @@ for model_name, model_path in models:
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     
-    # Save figure
+    # Save figure in results/mconf/
+    mconf_dir = PROJECT_ROOT / 'results' / 'mconf'
+    mconf_dir.mkdir(parents=True, exist_ok=True)
     safe_name = model_name.replace(' ', '_').replace('(', '').replace(')', '').replace('.', '_')
-    cm_path = BASE_DIR / f'confusion_matrix_{safe_name}.png'
+    cm_path = mconf_dir / f'confusion_matrix_{safe_name}.png'
     plt.savefig(cm_path, dpi=150, bbox_inches='tight')
-    print(f"\n✓ Confusion matrix saved: {cm_path.name}")
+    print(f"\n✓ Confusion matrix saved: {cm_path}")
     plt.close()
     
     # Check collapse
@@ -203,9 +205,11 @@ if len(results) == 2:
     axes[1].tick_params(axis='x', rotation=45)
     
     plt.tight_layout()
-    comparison_path = BASE_DIR / 'confusion_matrix_comparison.png'
+    mconf_dir = PROJECT_ROOT / 'results' / 'mconf'
+    mconf_dir.mkdir(parents=True, exist_ok=True)
+    comparison_path = mconf_dir / 'confusion_matrix_comparison.png'
     plt.savefig(comparison_path, dpi=150, bbox_inches='tight')
-    print(f"✓ Comparison saved: {comparison_path.name}")
+    print(f"✓ Comparison saved: {comparison_path}")
     plt.show()
 
 print(f"\n{'='*80}\n")
