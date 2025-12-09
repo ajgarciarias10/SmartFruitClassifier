@@ -1,6 +1,7 @@
 import os
 import sys
 from datetime import datetime
+import tensorflow as tf
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, os.pardir))
@@ -8,6 +9,39 @@ PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, os.pardir))
 # Ensure project root is on the import path when running from VS Code or other IDEs
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+
+# Configurar uso de GPU y CPU
+print("="*60)
+print("CONFIGURACIÓN DE DISPOSITIVOS")
+print("="*60)
+
+# Verificar dispositivos disponibles
+gpus = tf.config.list_physical_devices('GPU')
+cpus = tf.config.list_physical_devices('CPU')
+
+print(f"GPUs disponibles: {len(gpus)}")
+print(f"CPUs disponibles: {len(cpus)}")
+
+if gpus:
+    try:
+        # Habilitar crecimiento de memoria en GPU (evita usar toda la VRAM de golpe)
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        
+        # Permitir colocación suave (soft placement) para usar CPU cuando GPU no esté disponible
+        tf.config.set_soft_device_placement(True)
+        
+        print(f"\n✓ GPU configurada correctamente: {gpus[0].name}")
+        print("✓ Uso de memoria GPU: crecimiento dinámico habilitado")
+        print("✓ Soft placement habilitado: CPU como respaldo")
+        
+    except RuntimeError as e:
+        print(f"Error al configurar GPU: {e}")
+else:
+    print("\n⚠ No se detectó GPU, usando solo CPU")
+    print("Para usar GPU, instala: pip install tensorflow-directml (AMD) o tensorflow-gpu (NVIDIA)")
+
+print("="*60 + "\n")
 
 from FruitDetector import FruitDetector
 from simpleOptimizer import run_optimizer_and_apply

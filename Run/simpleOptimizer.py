@@ -10,13 +10,13 @@ from FruitDetector import FruitDetector
 
 # Parameter ranges to optimize with their limits and types
 PARAM_RANGES = {
-    "learning_rate": (1e-5, 5e-3, "log"),      # Learning rate
-    "batch_size": (16, 64, "int"),             # Batch size
+    "learning_rate": (1e-4, 5e-3, "log"),      # Learning rate (mínimo más alto)
+    "batch_size": (32, 64, "int"),             # Batch size (mínimo más seguro)
     "max_epochs": (10, 40, "int"),             # Maximum epochs
-    "rotation_range": (0, 60, "float"),        # Data augmentation rotation
-    "shift_range": (0.0, 0.3, "float"),        # Width/height shift
-    "zoom_range": (0.0, 0.3, "float"),         # Zoom augmentation
-    "shear_range": (0.0, 0.3, "float"),        # Shear augmentation
+    "rotation_range": (0, 45, "float"),        # Data augmentation rotation (más conservador)
+    "shift_range": (0.0, 0.25, "float"),       # Width/height shift (reducido)
+    "zoom_range": (0.0, 0.25, "float"),        # Zoom augmentation (reducido)
+    "shear_range": (0.0, 0.25, "float"),       # Shear augmentation (reducido)
     "horizontal_flip": (0, 1, "bool"),         # Whether to use horizontal flip
 }
 
@@ -311,8 +311,8 @@ def run_optimizer_and_apply(
 
     detector.build_model(best_bee.parameters.get("learning_rate", 1e-3))
 
+    # Usar las épocas que PSO encontró óptimas (sin limitar artificialmente)
     final_epochs = int(best_bee.parameters.get("max_epochs", 10))
-    final_epochs = min(final_epochs, 10)
     history = detector.train(
         train_gen,
         val_gen,

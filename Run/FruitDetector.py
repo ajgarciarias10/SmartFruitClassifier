@@ -7,6 +7,7 @@ from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 # import os
 from pathlib import Path
 class FruitDetector:
@@ -232,6 +233,35 @@ class FruitDetector:
         print(f"Test Accuracy: {results[1]:.4f}")
         print(f"Test Precision: {results[2]:.4f}")
         print(f"Test Recall: {results[3]:.4f}")
+
+        # Generate confusion matrix
+        print("\n=== Generating Confusion Matrix ===")
+        test_generator.reset()
+        
+        # Get predictions for all test data
+        y_pred = self.model.predict(test_generator, verbose=1)
+        y_pred_classes = np.argmax(y_pred, axis=1)
+        
+        # Get true labels
+        y_true = test_generator.classes
+        
+        # Get class names
+        class_names = list(test_generator.class_indices.keys())
+        
+        # Create confusion matrix
+        cm = confusion_matrix(y_true, y_pred_classes)
+        
+        # Display confusion matrix
+        fig, ax = plt.subplots(figsize=(10, 8))
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)
+        disp.plot(ax=ax, cmap='Blues', values_format='d')
+        plt.title('Confusion Matrix')
+        plt.xticks(rotation=45, ha='right')
+        plt.tight_layout()
+        plt.savefig('confusion_matrix.png', dpi=150, bbox_inches='tight')
+        plt.show()
+        
+        print(f"Confusion matrix saved to confusion_matrix.png")
 
         return results
     def predict_image(self, image_path, class_names):
